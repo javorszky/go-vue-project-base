@@ -32,6 +32,33 @@ claude mcp add -s user \
 ```
 Servers are stored in `~/.claude.json`. Verify with `claude mcp list`.
 
+## Imperatives for adding dependencies and using tools
+
+These rules apply every time a new library, package, or external tool is introduced, regardless of layer.
+
+### 1. Always use the latest stable version — and verify compatibility
+
+Before adding any dependency or tool, look up its current latest stable release:
+- **Go**: check pkg.go.dev or run `go list -m -json` for the latest tagged version.
+- **npm**: check npmjs.com or run `npm info <pkg> version`.
+- **GitHub Actions**: check the action's releases page for the latest tag.
+- **CLI tools** (linters, scanners, etc.): check the project's GitHub releases or official install docs.
+
+Do not assume the version in your training data is current — it is not. Use the version you looked up, not a guess.
+
+After identifying the latest stable version, verify it is compatible with the existing stack before committing to it:
+- If compatible: use it, and update any dependent code or config to match.
+- If not compatible: find the latest version that is compatible, tell the user which version was chosen and why the latest could not be used, and ask for feedback before proceeding.
+
+### 2. Read the official documentation before reading source code
+
+Before inferring how a library or tool works from its source or from examples in this repo:
+1. Fetch the official documentation using the **context7 MCP server** (preferred — version-aware).
+2. If the tool is installed locally, run its `--help` or `help` subcommand and read the output.
+3. Only fall back to reading source code or examples when docs are absent or incomplete.
+
+This prevents using deprecated APIs, outdated configuration syntax, or patterns that were valid in an older version but have since changed.
+
 ## Domain guidelines
 
 Load only the file(s) relevant to the task at hand.
