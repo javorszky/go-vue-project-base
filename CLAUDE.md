@@ -4,8 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Module: `github.com/javorszky/hoplink-go`  
+Module: `github.com/your-org/your-project`  
 Language: Go 1.26.2
+
+> **New project?** Run `bash scripts/init.sh` once after cloning to replace placeholder names with your actual module path and project name.
 
 This project is in its earliest stage — only `go.mod` exists. Architecture and conventions will grow here as the codebase develops.
 

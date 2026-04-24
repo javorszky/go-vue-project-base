@@ -3,7 +3,7 @@
 # back to Claude (via asyncRewake exit 2) for logical + security review.
 # Only fires when the working tree has changed since the last review.
 
-SENTINEL="${TMPDIR:-/tmp}/.hoplink-review-$(git rev-parse --show-toplevel 2>/dev/null | md5 -q)"
+SENTINEL="${TMPDIR:-/tmp}/.claude-review-$(git rev-parse --show-toplevel 2>/dev/null | md5 -q)"
 
 # Guard: nothing changed → silent exit
 changes=$(git status --porcelain 2>/dev/null)
@@ -32,6 +32,18 @@ if echo "$changes" | grep -q '\.go$'; then
   echo ""
   echo "=== govulncheck ==="
   govulncheck ./... 2>&1 || true
+  echo ""
+fi
+
+# Frontend linters — only when .ts/.vue files are present in the diff
+root=$(git rev-parse --show-toplevel 2>/dev/null)
+eslint_bin="$root/frontend/node_modules/.bin/eslint"
+if echo "$changes" | grep -qE '\.(ts|vue)$' && [ -x "$eslint_bin" ]; then
+  echo "=== ESLint (frontend) ==="
+  (cd "$root/frontend" && "$eslint_bin" . --max-warnings 0 2>&1) || true
+  echo ""
+  echo "=== TypeScript typecheck (frontend) ==="
+  (cd "$root/frontend" && node_modules/.bin/vue-tsc --noEmit 2>&1) || true
   echo ""
 fi
 

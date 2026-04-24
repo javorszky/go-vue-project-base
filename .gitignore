@@ -1,0 +1,24 @@
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/bin/
+/dist/
+
+# Frontend
+frontend/node_modules/
+frontend/package-lock.json
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# IDE / OS
+.DS_Store
+.idea/
+*.swp
+*.swo
