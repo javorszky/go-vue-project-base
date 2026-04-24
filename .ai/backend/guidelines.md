@@ -22,6 +22,21 @@ go test ./path/to/package -run TestFunctionName
 golangci-lint run
 ```
 
+## Security headers
+
+The backend serves only JSON API responses — it does not serve `index.html` or frontend assets, so it does not set a page-level `Content-Security-Policy`. That is the static host's responsibility (see the frontend guidelines).
+
+Every API response must include these headers, applied globally via an Echo middleware:
+
+| Header | Value |
+|--------|-------|
+| `X-Content-Type-Options` | `nosniff` |
+| `X-Frame-Options` | `DENY` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Cache-Control` | `no-store` (for authenticated/sensitive endpoints) |
+
+CORS headers (`Access-Control-Allow-Origin`, etc.) are also set here — allow only the known frontend origin, never `*` in production.
+
 ## Coding style and engineering choices
 
 Follow [Effective Go](https://go.dev/doc/effective_go) throughout. Key rules:

@@ -28,6 +28,47 @@
 - Style Reka parts exclusively with Tailwind utility classes on the component's `class` attribute — no scoped CSS for Reka elements.
 - Compose Reka primitive parts directly in the template; only wrap them in a component when the same composition is reused in three or more places.
 
+## Security headers
+
+CSP must be set wherever `index.html` is served — the static host/CDN in production, and Vite's dev server in development. It is not the backend's responsibility (the backend serves JSON, not HTML pages).
+
+### Policy directives for this SPA
+```
+Content-Security-Policy:
+  default-src 'self';
+  script-src  'self';
+  style-src   'self' 'unsafe-inline';
+  connect-src 'self' https://api.example.com;
+  img-src     'self' data:;
+  font-src    'self';
+  object-src  'none';
+  base-uri    'self';
+  form-action 'self';
+  frame-ancestors 'none';
+```
+
+Notes:
+- `unsafe-inline` on `style-src` is required in **development** (Vite injects styles at runtime). In a production build Vite extracts all styles to `.css` files, so you can drop `unsafe-inline` there.
+- `connect-src` must include the backend API origin. In development that is `http://localhost:8080`; in production it is the deployed API origin.
+- Replace `https://api.example.com` with the real production API origin before deploying.
+
+### Vite dev server configuration
+Set headers in `vite.config.ts` so the dev environment matches production as closely as possible:
+```ts
+server: {
+  headers: {
+    'Content-Security-Policy':
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+      "connect-src 'self' http://localhost:8080; img-src 'self' data:; " +
+      "font-src 'self'; object-src 'none'; base-uri 'self'; " +
+      "form-action 'self'; frame-ancestors 'none';",
+  },
+}
+```
+
+### Production (static host / CDN)
+Configure the CSP header at the hosting layer (e.g. Nginx `add_header`, Cloudflare Transform Rules, Netlify `_headers` file) — not in the built HTML file itself. Drop `unsafe-inline` from `style-src` in the production policy.
+
 ## Tailwind CSS v4
 - Configuration is CSS-first: use `@theme`, `@layer`, and `@utility` in the root CSS file instead of a JS config.
 - Use Tailwind utility classes directly in templates; avoid arbitrary values (`[...]`) unless there is no standard scale equivalent.
