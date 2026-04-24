@@ -16,10 +16,5 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.vue",
-    "vite.config.ts",
-    "eslint.config.ts"
-  ]
+  "include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts", "eslint.config.ts"]
 }
