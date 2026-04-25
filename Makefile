@@ -21,6 +21,7 @@ test-fe:
 lint: lint-go lint-fe lint-shell
 
 lint-go:
+	golangci-lint config verify
 	golangci-lint run
 	golangci-lint fmt --diff
 
@@ -35,6 +36,7 @@ lint-shell:
 lint-fix: fix-go fix-fe fix-shell
 
 fix-go:
+	golangci-lint config verify
 	golangci-lint run --fix
 	golangci-lint fmt
 
