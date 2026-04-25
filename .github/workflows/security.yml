@@ -9,12 +9,14 @@ on:
 
 permissions:
   contents: read
-  security-events: write
 
 jobs:
   trivy:
     name: Trivy — vulnerability scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
