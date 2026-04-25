@@ -8,7 +8,9 @@ tidy:
 	go mod vendor
 
 build: tidy
-	go build -trimpath -ldflags="-s -w" -o bin/server ./cmd/server
+	go build -trimpath \
+		-ldflags="-s -w -X main.gitSHA=$(shell git rev-parse HEAD) -X main.buildTime=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)" \
+		-o bin/server ./cmd/server
 
 test: test-go test-fe
 
