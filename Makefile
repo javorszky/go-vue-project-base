@@ -1,4 +1,6 @@
-.PHONY: tidy build test test-go test-fe lint lint-go lint-fe lint-fix fix-go fix-fe
+.PHONY: tidy build test test-go test-fe lint lint-go lint-fe lint-shell lint-fix fix-go fix-fe fix-shell
+
+SHELL_SCRIPTS := $(shell find . -name '*.sh' -not -path './vendor/*' -not -path './frontend/*')
 
 tidy:
 	go mod tidy
@@ -16,7 +18,7 @@ test-go:
 test-fe:
 	cd frontend && npm run test
 
-lint: lint-go lint-fe
+lint: lint-go lint-fe lint-shell
 
 lint-go:
 	golangci-lint run
@@ -27,7 +29,10 @@ lint-fe:
 	cd frontend && npm run lint
 	cd frontend && npm run format:check
 
-lint-fix: fix-go fix-fe
+lint-shell:
+	[ -z "$(SHELL_SCRIPTS)" ] || shellcheck $(SHELL_SCRIPTS)
+
+lint-fix: fix-go fix-fe fix-shell
 
 fix-go:
 	golangci-lint run --fix
@@ -36,3 +41,7 @@ fix-go:
 fix-fe:
 	cd frontend && npm run lint:fix
 	cd frontend && npm run format
+
+fix-shell:
+	@diff=$$(shellcheck --format=diff $(SHELL_SCRIPTS)); \
+	[ -z "$$diff" ] || echo "$$diff" | git apply

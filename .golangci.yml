@@ -19,6 +19,15 @@ linters:
     paths:
       - vendor
       - frontend
+    presets:
+      - std-error-handling       # stdlib funcs that commonly return ignored errors
+      - common-false-positives   # well-known false-positive patterns
+    rules:
+      - path: _test\.go
+        linters:
+          - gosec      # tests legitimately use hardcoded values and weak crypto
+          - wrapcheck  # test errors need not be wrapped
+          - nilerr     # less relevant in test helpers
 
   settings:
     cyclop:
@@ -57,14 +66,3 @@ formatters:
     gofumpt:
       extra-rules: true
 
-exclusions:
-  presets:
-    - std-error-handling       # stdlib funcs that commonly return ignored errors
-    - common-false-positives   # well-known false-positive patterns
-
-  rules:
-    - path: _test\.go
-      linters:
-        - gosec      # tests legitimately use hardcoded values and weak crypto
-        - wrapcheck  # test errors need not be wrapped
-        - nilerr     # less relevant in test helpers
