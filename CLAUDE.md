@@ -9,7 +9,7 @@ Language: Go 1.26.2
 
 > **New project?** Run `bash scripts/init.sh` once after cloning to replace placeholder names with your actual module path and project name.
 
-This project is in its earliest stage — only `go.mod` exists. Architecture and conventions will grow here as the codebase develops.
+The project has a minimal working skeleton: Echo backend with a health endpoint and embedded Vue 3 frontend. Grow the guidelines below as conventions solidify.
 
 ## Required MCP servers
 

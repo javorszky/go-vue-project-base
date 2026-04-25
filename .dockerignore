@@ -24,10 +24,12 @@ vendor
 coverage.out
 /bin
 
-# Frontend: rebuilt inside Docker; local outputs excluded
+# Frontend: rebuilt inside Docker; local build outputs excluded
 frontend/node_modules
-frontend/dist
 frontend/coverage
+# internal/ui/dist is intentionally NOT excluded — the placeholder index.html
+# must be in the build context so //go:embed compiles when frontend-builder
+# runs first and overwrites it.
 
 # Docs and local scripts
 *.md

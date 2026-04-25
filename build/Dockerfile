@@ -19,8 +19,9 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-# Overwrite frontend/dist with the freshly compiled SPA.
-COPY --from=frontend-builder /frontend/dist ./frontend/dist
+# Overwrite the placeholder with the freshly compiled SPA.
+# Vite builds to ../internal/ui/dist (relative to /frontend workdir) = /internal/ui/dist.
+COPY --from=frontend-builder /internal/ui/dist ./internal/ui/dist
 
 RUN CGO_ENABLED=0 GOOS=linux go build \
     -trimpath \

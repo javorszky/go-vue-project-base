@@ -46,14 +46,14 @@ cd frontend && npm install
 In two terminals:
 
 ```bash
-# Terminal 1 — Go backend (once cmd/server/main.go exists)
+# Terminal 1 — Go backend
 go run ./cmd/server
 
 # Terminal 2 — Vue frontend
 cd frontend && npm run dev
 ```
 
-The Vite dev server proxies `/api` requests to `http://localhost:8080`, so the frontend and backend talk to each other without CORS configuration during development.
+The Vite dev server proxies `/api` requests to `http://localhost:8080`, so the frontend and backend talk to each other without any CORS configuration during development.
 
 ---
 
@@ -80,7 +80,7 @@ All endpoints are versioned under `/api/v1/`. Authentication uses `Authorization
 - **Framework:** [Echo](https://echo.labstack.com/) — minimal, fast, request-lifecycle hooks
 - **Observability:** OpenTelemetry traces, metrics, and structured logs on every request
 - **Error envelope:** every API error follows `{ "error": { "code": "…", "message": "…" } }`
-- **Entry point:** `cmd/server/main.go`; shared logic lives under `internal/`
+- **Entry point:** `cmd/server/main.go`; Echo setup and routes live in `internal/server/`
 
 CORS is configured from day one, driven by a `FRONTEND_ORIGIN` environment variable. In the embedded deployment mode (see below) this is left empty; in the decoupled mode it is set to the frontend's origin. No code change is needed at migration time.
 
@@ -111,7 +111,7 @@ Browser ──► scratch container
                     └── /*        → embedded frontend (SPA fallback)
 ```
 
-The multi-stage `Dockerfile` handles the full build:
+The multi-stage `build/Dockerfile` handles the full build:
 1. **`frontend-deps`** — `npm ci`; cached until `package*.json` changes
 2. **`frontend-builder`** — `npm run build`
 3. **`go-builder`** — `golang:1.26-alpine`; embeds the SPA and compiles a static binary (`CGO_ENABLED=0 -trimpath -ldflags="-s -w"`)

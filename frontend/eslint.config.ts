@@ -5,7 +5,7 @@ import eslintConfigPrettier from 'eslint-config-prettier'
 
 export default tseslint.config(
   // Exclude build output and dependencies
-  { ignores: ['dist/**', 'node_modules/**'] },
+  { ignores: ['dist/**', 'node_modules/**', 'coverage/**'] },
 
   // TypeScript type-aware rules for .ts files
   {

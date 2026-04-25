@@ -13,6 +13,10 @@ vendor/
 # Frontend
 **/node_modules/
 frontend/dist/
+
+# Go-embedded frontend build output — placeholder index.html is kept, built assets are not
+internal/ui/dist/*
+!internal/ui/dist/index.html
 frontend/.env
 frontend/.env.local
 frontend/.env.*.local

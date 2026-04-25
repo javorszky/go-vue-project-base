@@ -1,0 +1,52 @@
+{
+    # Slowloris and header-flood mitigation.
+    servers {
+        timeouts {
+            read_header 5s
+            read_body   30s
+            write       30s
+            idle        2m
+        }
+        max_header_size 64KB
+    }
+}
+
+:80 {
+    # Reject oversized request bodies before they reach the backend.
+    request_body {
+        max_size 10MB
+    }
+
+    # Bandwidth savings.
+    encode gzip zstd
+
+    # Security headers applied to every response.
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Frame-Options            "DENY"
+        X-Content-Type-Options     "nosniff"
+        Referrer-Policy            "strict-origin-when-cross-origin"
+        Permissions-Policy         "geolocation=(), microphone=(), camera=()"
+        -Server
+    }
+
+    root * /srv
+
+    # route enforces directive order: API proxy runs before the SPA fallback.
+    route {
+        # Caddy sets X-Forwarded-For automatically (appends to chain).
+        # X-Real-IP carries the IP of whoever connected to Caddy — this is
+        # the CDN edge IP when behind Cloudflare. In that case read
+        # CF-Connecting-IP on the backend instead, or configure
+        # trusted_proxies for the CDN IP ranges.
+        reverse_proxy /api/* {env.BACKEND_URL} {
+            header_up Host              {upstream_hostport}
+            header_up X-Real-IP         {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+
+        # SPA fallback: any path with no matching file serves index.html.
+        try_files {path} /index.html
+        file_server
+    }
+}
