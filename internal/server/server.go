@@ -13,6 +13,12 @@ import (
 	"github.com/your-org/your-project/internal/config"
 )
 
+// BuildInfo holds compile-time metadata injected via -ldflags.
+type BuildInfo struct {
+	GitSHA    string
+	BuildTime string
+}
+
 // Server wraps the Echo instance and its configuration.
 type Server struct {
 	echo *echo.Echo
@@ -20,7 +26,7 @@ type Server struct {
 }
 
 // New creates and configures a Server.
-func New(cfg config.Config) *Server {
+func New(cfg config.Config, info BuildInfo) *Server {
 	e := echo.New()
 
 	e.Use(middleware.Recover())
@@ -35,6 +41,7 @@ func New(cfg config.Config) *Server {
 
 	v1 := e.Group("/api/v1")
 	v1.GET("/health", healthHandler)
+	v1.GET("/status", statusHandler(info))
 
 	registerStatic(e)
 

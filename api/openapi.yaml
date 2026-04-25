@@ -1,0 +1,60 @@
+openapi: 3.1.0
+info:
+  title: your-project API
+  version: 0.1.0
+
+servers:
+  - url: /api/v1
+    description: Local (Vite proxy or embedded mode)
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Liveness check
+      responses:
+        '200':
+          description: Service is reachable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /status:
+    get:
+      operationId: getStatus
+      summary: Build and runtime status
+      responses:
+        '200':
+          description: Compile-time metadata injected at build
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: ok
+
+    StatusResponse:
+      type: object
+      required: [status, git_sha, build_time]
+      properties:
+        status:
+          type: string
+          example: ok
+        git_sha:
+          type: string
+          description: Git commit SHA injected at build time
+          example: a1b2c3d4e5f6
+        build_time:
+          type: string
+          format: date-time
+          description: RFC 3339 timestamp of when the binary was compiled
+          example: "2026-04-25T12:00:00Z"

@@ -18,7 +18,7 @@ func newHandler(frontendOrigin string) http.Handler {
 		Domain:         "localhost",
 		Port:           8080,
 		FrontendOrigin: frontendOrigin,
-	}).Handler()
+	}, server.BuildInfo{}).Handler()
 }
 
 func TestHealthEndpoint(t *testing.T) {
@@ -50,6 +50,51 @@ func TestHealthEndpoint_body(t *testing.T) {
 	var body map[string]string
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
 	assert.Equal(t, "ok", body["status"])
+}
+
+func TestStatusEndpoint(t *testing.T) {
+	tests := []struct {
+		name   string
+		method string
+		want   int
+	}{
+		{name: "GET returns 200", method: http.MethodGet, want: http.StatusOK},
+		{name: "POST returns 405", method: http.MethodPost, want: http.StatusMethodNotAllowed},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(tc.method, "/api/v1/status", http.NoBody)
+			rec := httptest.NewRecorder()
+			newHandler("").ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.want, rec.Code)
+		})
+	}
+}
+
+func TestStatusEndpoint_body(t *testing.T) {
+	info := server.BuildInfo{GitSHA: "abc123", BuildTime: "2026-04-25T12:00:00Z"}
+	h := server.New(config.Config{
+		Domain: "localhost",
+		Port:   8080,
+	}, info).Handler()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/status", http.NoBody)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var body struct {
+		Status    string `json:"status"`
+		GitSHA    string `json:"git_sha"`
+		BuildTime string `json:"build_time"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+	assert.Equal(t, "ok", body.Status)
+	assert.Equal(t, "abc123", body.GitSHA)
+	assert.Equal(t, "2026-04-25T12:00:00Z", body.BuildTime)
 }
 
 func TestCORSHeaders(t *testing.T) {

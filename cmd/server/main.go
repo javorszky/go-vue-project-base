@@ -13,6 +13,15 @@ import (
 	"github.com/your-org/your-project/internal/server"
 )
 
+// Injected at build time via -ldflags:
+//
+//	-X main.gitSHA=$(git rev-parse HEAD)
+//	-X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+var (
+	gitSHA    = "unknown"
+	buildTime = "unknown"
+)
+
 func main() {
 	if err := run(); err != nil {
 		slog.Error(err.Error())
@@ -29,7 +38,8 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if err := server.New(cfg).Start(ctx); err != nil {
+	info := server.BuildInfo{GitSHA: gitSHA, BuildTime: buildTime}
+	if err := server.New(cfg, info).Start(ctx); err != nil {
 		return fmt.Errorf("run server: %w", err)
 	}
 	return nil

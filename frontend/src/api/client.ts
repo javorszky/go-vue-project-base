@@ -13,3 +13,13 @@ export interface HealthResponse {
 export function checkHealth(): Promise<HealthResponse> {
   return request<HealthResponse>('/api/v1/health')
 }
+
+export interface StatusResponse {
+  status: string
+  git_sha: string
+  build_time: string
+}
+
+export function getStatus(): Promise<StatusResponse> {
+  return request<StatusResponse>('/api/v1/status')
+}
