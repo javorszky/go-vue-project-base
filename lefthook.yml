@@ -1,0 +1,49 @@
+# lefthook v2.1.6
+# Install: brew install lefthook  OR  go install github.com/evilmartians/lefthook@v2.1.6
+# Activate after cloning: lefthook install  (or run npm install in frontend/ — the prepare script does it)
+#
+# Required tools on PATH:
+#   go, golangci-lint, gofmt  — https://golangci-lint.run/usage/install/
+#   node, npm                 — via nvm (see frontend/.nvmrc)
+
+pre-commit:
+  parallel: true
+  commands:
+    go-lint:
+      glob: "**/*.go"
+      run: golangci-lint run
+
+    go-fmt:
+      glob: "**/*.go"
+      run: |
+        unformatted=$(gofmt -l . | grep -v '^vendor/')
+        if [ -n "$unformatted" ]; then
+          echo "Files need gofmt. Run: gofmt -w ."
+          echo "$unformatted"
+          exit 1
+        fi
+
+    frontend-lint:
+      root: frontend/
+      glob: "frontend/**"
+      run: npm run lint
+
+    frontend-format:
+      root: frontend/
+      glob: "frontend/**"
+      run: npm run format:check
+
+    frontend-typecheck:
+      root: frontend/
+      glob: "frontend/**"
+      run: npm run typecheck
+
+pre-push:
+  parallel: true
+  commands:
+    go-test:
+      run: go test -race ./...
+
+    frontend-test:
+      root: frontend/
+      run: npm run test

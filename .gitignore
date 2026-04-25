@@ -8,9 +8,10 @@
 *.out
 /bin/
 /dist/
+vendor/
 
 # Frontend
-frontend/node_modules/
+**/node_modules/
 frontend/dist/
 frontend/.env
 frontend/.env.local

@@ -64,6 +64,7 @@ This prevents using deprecated APIs, outdated configuration syntax, or patterns 
 Load only the file(s) relevant to the task at hand.
 
 - **Overall system design, API contract, decoupling rules**: see [`.ai/architecture/overview.md`](.ai/architecture/overview.md)
+- **Deployment modes, Docker images, Caddy config, migration playbook**: see [`.ai/architecture/deployment.md`](.ai/architecture/deployment.md)
 - **Backend (Go, Echo, OTel, coding style, context, shutdown)**: see [`.ai/backend/guidelines.md`](.ai/backend/guidelines.md)
 - **Frontend (Vue 3, Reka UI, Tailwind CSS v4, Vite)**: see [`.ai/frontend/guidelines.md`](.ai/frontend/guidelines.md)
 - **Orchestration — task sequencing and cross-layer workflows**: see [`.ai/workflows/common-tasks.md`](.ai/workflows/common-tasks.md)
