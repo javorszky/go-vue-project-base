@@ -1,4 +1,4 @@
-.PHONY: tidy build docker-build test test-go test-fe lint lint-go lint-fe lint-shell lint-fix fix-go fix-fe fix-shell
+.PHONY: tidy build run docker-build docker-run test test-go test-fe lint lint-go lint-fe lint-shell lint-fix fix-go fix-fe fix-shell
 
 SHELL_SCRIPTS := $(shell find . -name '*.sh' -not -path './vendor/*' -not -path './frontend/*')
 IMAGE ?= go-vue-template
@@ -13,12 +13,18 @@ build: tidy
 		-ldflags="-s -w -X main.gitSHA=$(shell git rev-parse HEAD) -X main.buildTime=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)" \
 		-o bin/server ./cmd/server
 
+run: build
+	./bin/server
+
 docker-build:
 	docker build \
 		-f build/Dockerfile \
 		-t $(IMAGE):$(shell git rev-parse --short HEAD) \
 		-t $(IMAGE):latest \
 		.
+
+docker-run: docker-build
+	docker run --rm -p 8080:8080 $(IMAGE):latest
 
 test: test-go test-fe
 
