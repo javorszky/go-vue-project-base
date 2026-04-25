@@ -1,0 +1,28 @@
+coverage:
+  precision: 2
+  round: down
+  range: "50...100"
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        target: auto
+        threshold: 5%
+
+flags:
+  go:
+    paths:
+      - "**/*.go"
+      - "!**/*_test.go"
+      - "!vendor/"
+  frontend:
+    paths:
+      - frontend/src/
+
+comment:
+  layout: "reach,diff,flags,files"
+  behavior: default
+  require_changes: true

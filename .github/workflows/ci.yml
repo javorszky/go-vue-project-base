@@ -48,12 +48,13 @@ jobs:
       - name: Test
         run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         if: always()
         with:
-          name: go-coverage
-          path: coverage.out
-          if-no-files-found: ignore
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.out
+          flags: go
+          fail_ci_if_error: false
 
   frontend-lint:
     name: Frontend — lint & format
@@ -124,3 +125,11 @@ jobs:
           name: frontend-coverage
           path: frontend/coverage/
           if-no-files-found: ignore
+
+      - uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+        if: always()
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: frontend/coverage/lcov.info
+          flags: frontend
+          fail_ci_if_error: false

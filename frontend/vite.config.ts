@@ -19,7 +19,7 @@ export default defineConfig({
     passWithNoTests: true,
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html', 'lcov'],
+      reporter: ['lcov'],
       exclude: ['node_modules/', 'dist/', '**/*.config.*'],
     },
   },
