@@ -41,7 +41,7 @@ These rules apply every time a new library, package, or external tool is introdu
 Before adding any dependency or tool, look up its current latest stable release:
 - **Go**: check pkg.go.dev or run `go list -m -json` for the latest tagged version.
 - **npm**: check npmjs.com or run `npm info <pkg> version`.
-- **GitHub Actions**: check the action's releases page for the latest tag.
+- **GitHub Actions** (workflow files): every `uses: owner/repo@version` line must use the latest stable tag. Use the **GitHub MCP server** (`get_latest_release` or `list_tags`) to look up the current release for each action before writing or updating a workflow file. Apply this to all actions in the file, not just the one being added.
 - **CLI tools** (linters, scanners, etc.): check the project's GitHub releases or official install docs.
 
 Do not assume the version in your training data is current — it is not. Use the version you looked up, not a guess.
