@@ -69,7 +69,7 @@ Follow [Effective Go](https://go.dev/doc/effective_go) throughout. Key rules:
 - Use `panic` only for truly unrecoverable states (programmer errors at init time).
 
 ### Interfaces
-- Keep interfaces small — one or two methods is idiomatic.
+- Keep interfaces small — one or two methods is idiomatic. Shallow interfaces are easier to mock in tests; a five-method interface usually signals that a dependency should be split.
 - Define interfaces in the consuming package, not the implementing package.
 - Constructors should return interface types, not concrete types, when the interface is the intended API surface.
 - Use compile-time interface checks where helpful: `var _ io.Reader = (*MyType)(nil)`.
@@ -112,3 +112,12 @@ Follow [Effective Go](https://go.dev/doc/effective_go) throughout. Key rules:
 ### Imports
 - Side-effect-only imports use the blank identifier: `import _ "net/http/pprof"`.
 - Group imports: stdlib, then external, then internal — separated by blank lines.
+
+### Testing
+- All test files use the external test package: `package foo_test`, not `package foo`. This is black-box testing — tests interact with the package only through its exported API, exactly as a real caller would.
+- Unexported functions must be covered indirectly: write tests against the exported functions and methods that exercise them. If an unexported function cannot be reached through any exported path, that is a design smell — consider whether it should be exported, inlined, or removed.
+- Never reach into unexported identifiers by putting tests in the same package just to gain access. If a test genuinely cannot be written without internal access, refactor the design first.
+- Use table-driven tests: define a `[]struct{ name string; ... }` slice of cases and range over it with `t.Run(tc.name, func(t *testing.T) { ... })`. This keeps assertions uniform and makes it trivial to add new cases.
+- Use [`github.com/stretchr/testify`](https://github.com/stretchr/testify) for assertions (`assert`, `require`) and mocks (`mock`). Use `require` when a failure makes the rest of the test meaningless (e.g. nil check before dereferencing); use `assert` otherwise to let all assertions in a case run.
+- Generate mocks with `testify/mock` via `mockery`. Mock only at package boundaries (interfaces you own or consume from external packages) — do not mock concrete types.
+- Never call `os.Setenv` / `os.Unsetenv` in tests to configure the app under test. Use `config.LoadFrom(map[string]string{...})` instead — it parses from an in-memory map and requires no cleanup.

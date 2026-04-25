@@ -14,6 +14,7 @@ linters:
     - unconvert    # unnecessary type conversions
     - unparam      # unused function parameters
     - wrapcheck    # errors from external packages must be wrapped
+    - forbidigo    # forbids direct os.Getenv / os.Setenv outside the config package
 
   exclusions:
     paths:
@@ -28,6 +29,7 @@ linters:
           - gosec      # tests legitimately use hardcoded values and weak crypto
           - wrapcheck  # test errors need not be wrapped
           - nilerr     # less relevant in test helpers
+          - forbidigo  # tests may set env vars to exercise config loading
 
   settings:
     cyclop:
@@ -39,6 +41,23 @@ linters:
 
     govet:
       enable-all: true
+
+    forbidigo:
+      forbid:
+        - pattern: 'os\.Getenv'
+          msg: "use config.Load() instead; os.Getenv bypasses the central config package"
+        - pattern: 'os\.LookupEnv'
+          msg: "use config.Load() instead; os.LookupEnv bypasses the central config package"
+        - pattern: 'os\.Setenv'
+          msg: "use config.Load() instead; os.Setenv bypasses the central config package"
+        - pattern: 'os\.Unsetenv'
+          msg: "use config.Load() instead; os.Unsetenv bypasses the central config package"
+        - pattern: 'os\.Clearenv'
+          msg: "use config.Load() instead; os.Clearenv bypasses the central config package"
+        - pattern: 'os\.Environ'
+          msg: "use config.Load() instead; os.Environ bypasses the central config package"
+        - pattern: 'os\.ExpandEnv'
+          msg: "use config.Load() instead; os.ExpandEnv bypasses the central config package"
 
     gocritic:
       enabled-tags:

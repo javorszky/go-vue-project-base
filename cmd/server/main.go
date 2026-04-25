@@ -3,32 +3,34 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
-	"github.com/labstack/echo/v5"
-
+	"github.com/your-org/your-project/internal/config"
 	"github.com/your-org/your-project/internal/server"
 )
 
 func main() {
-	e := server.New()
+	if err := run(); err != nil {
+		slog.Error(err.Error())
+		os.Exit(1)
+	}
+}
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+func run() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("load config: %w", err)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	sc := echo.StartConfig{
-		Address:         ":" + port,
-		GracefulTimeout: 10 * time.Second,
+	if err := server.New(cfg).Start(ctx); err != nil {
+		return fmt.Errorf("run server: %w", err)
 	}
-	if err := sc.Start(ctx, e); err != nil {
-		e.Logger.Error("server error", "error", err)
-	}
+	return nil
 }

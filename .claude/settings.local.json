@@ -9,7 +9,9 @@
       "Bash(make lint-fix *)",
       "Bash(make lint *)",
       "WebFetch(domain:docs.codecov.io)",
-      "WebFetch(domain:docs.codecov.com)"
+      "WebFetch(domain:docs.codecov.com)",
+      "mcp__github__get_latest_release",
+      "mcp__github__list_commits"
     ]
   }
 }
