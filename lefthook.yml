@@ -5,6 +5,7 @@
 # Required tools on PATH:
 #   go, golangci-lint, gofmt  — https://golangci-lint.run/usage/install/
 #   node, npm                 — via nvm (see frontend/.nvmrc)
+#   shellcheck                — brew install shellcheck
 
 pre-commit:
   parallel: true
@@ -37,6 +38,10 @@ pre-commit:
       root: frontend/
       glob: "frontend/**"
       run: npm run typecheck
+
+    shell-lint:
+      glob: "**/*.sh"
+      run: shellcheck {staged_files}
 
 pre-push:
   parallel: true

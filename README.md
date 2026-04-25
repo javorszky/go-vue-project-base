@@ -14,6 +14,7 @@ A GitHub template for production-ready full-stack applications: Go backend, Vue 
 | Node | 24+ | [nvm](https://github.com/nvm-sh/nvm) — `nvm install` reads `.nvmrc` |
 | golangci-lint | latest | `brew install golangci-lint` |
 | lefthook | 2.1+ | `brew install lefthook` |
+| shellcheck | latest | `brew install shellcheck` |
 
 ### 1. Create a repo from this template
 

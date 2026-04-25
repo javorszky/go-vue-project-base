@@ -85,6 +85,17 @@ jobs:
         run: npm run typecheck
         working-directory: frontend
 
+  shell-lint:
+    name: Shell — shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: shellcheck
+        run: shellcheck scripts/*.sh
+
   frontend-test:
     name: Frontend — test & coverage
     runs-on: ubuntu-latest
