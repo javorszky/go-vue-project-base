@@ -7,7 +7,9 @@
       "mcp__context7__resolve-library-id",
       "mcp__context7__query-docs",
       "Bash(make lint-fix *)",
-      "Bash(make lint *)"
+      "Bash(make lint *)",
+      "WebFetch(domain:docs.codecov.io)",
+      "WebFetch(domain:docs.codecov.com)"
     ]
   }
 }
