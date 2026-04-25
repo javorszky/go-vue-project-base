@@ -1,19 +1,19 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { checkHealth } from './api/client'
+  import { onMounted, ref } from 'vue'
+  import { checkHealth } from './api/client'
 
-type Status = 'loading' | 'ok' | 'error'
+  type Status = 'loading' | 'ok' | 'error'
 
-const status = ref<Status>('loading')
+  const status = ref<Status>('loading')
 
-onMounted(async () => {
-  try {
-    await checkHealth()
-    status.value = 'ok'
-  } catch {
-    status.value = 'error'
-  }
-})
+  onMounted(async () => {
+    try {
+      await checkHealth()
+      status.value = 'ok'
+    } catch {
+      status.value = 'error'
+    }
+  })
 </script>
 
 <template>
@@ -25,18 +25,9 @@ onMounted(async () => {
       <div class="flex items-center gap-2.5">
         <span class="text-sm text-gray-500">API</span>
 
-        <span
-          v-if="status === 'loading'"
-          class="h-2 w-2 rounded-full bg-gray-300 animate-pulse"
-        />
-        <span
-          v-else-if="status === 'ok'"
-          class="h-2 w-2 rounded-full bg-emerald-500"
-        />
-        <span
-          v-else
-          class="h-2 w-2 rounded-full bg-red-400"
-        />
+        <span v-if="status === 'loading'" class="h-2 w-2 rounded-full bg-gray-300 animate-pulse" />
+        <span v-else-if="status === 'ok'" class="h-2 w-2 rounded-full bg-emerald-500" />
+        <span v-else class="h-2 w-2 rounded-full bg-red-400" />
 
         <span class="text-sm text-gray-400">
           {{ status === 'loading' ? 'checking…' : status === 'ok' ? 'healthy' : 'unreachable' }}

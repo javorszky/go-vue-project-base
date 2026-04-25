@@ -1,6 +1,8 @@
+// Package server configures and returns the Echo HTTP server instance.
 package server
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 
@@ -31,5 +33,9 @@ func New() *echo.Echo {
 }
 
 func healthHandler(c *echo.Context) error {
-	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+	if err := c.JSON(http.StatusOK, map[string]string{"status": "ok"}); err != nil {
+		return fmt.Errorf("write response: %w", err)
+	}
+
+	return nil
 }

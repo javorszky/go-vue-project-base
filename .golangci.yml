@@ -18,6 +18,7 @@ linters:
   exclusions:
     paths:
       - vendor
+      - frontend
 
   settings:
     cyclop:
@@ -44,6 +45,7 @@ formatters:
   exclusions:
     paths:
       - vendor
+      - frontend
 
   settings:
     gci:

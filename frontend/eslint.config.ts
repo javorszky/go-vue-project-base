@@ -3,6 +3,9 @@ import tseslint from 'typescript-eslint'
 import pluginA11y from 'eslint-plugin-vuejs-accessibility'
 import eslintConfigPrettier from 'eslint-config-prettier'
 
+// Shared so projectService doesn't reload for each config block that references .vue files.
+const extraFileExtensions = ['.vue']
+
 export default tseslint.config(
   // Exclude build output and dependencies
   { ignores: ['dist/**', 'node_modules/**', 'coverage/**'] },
@@ -13,8 +16,9 @@ export default tseslint.config(
     extends: [...tseslint.configs.recommendedTypeChecked],
     languageOptions: {
       parserOptions: {
-        project: true,
+        projectService: true,
         tsconfigRootDir: import.meta.dirname,
+        extraFileExtensions,
       },
     },
   },
@@ -32,9 +36,9 @@ export default tseslint.config(
     languageOptions: {
       parserOptions: {
         parser: tseslint.parser,
-        project: true,
+        projectService: true,
         tsconfigRootDir: import.meta.dirname,
-        extraFileExtensions: ['.vue'],
+        extraFileExtensions,
       },
     },
     rules: {
