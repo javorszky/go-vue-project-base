@@ -1,0 +1,34 @@
+# Version control
+.git
+.github
+
+# Claude and AI context docs
+.claude
+.ai
+
+# Tooling configs — not needed for build
+.golangci.yml
+lefthook.yml
+renovate.json
+
+# IDE and OS artifacts
+.idea
+.DS_Store
+*.swp
+*.swo
+
+# Go build artifacts
+vendor
+*.test
+*.out
+coverage.out
+/bin
+
+# Frontend: rebuilt inside Docker; local outputs excluded
+frontend/node_modules
+frontend/dist
+frontend/coverage
+
+# Docs and local scripts
+*.md
+scripts

@@ -2,6 +2,67 @@ version: "2"
 
 linters:
   default: standard
+  enable:
+    - cyclop       # cyclomatic complexity per function
+    - exhaustive   # exhaustive switch/map on enum types
+    - gocritic     # 100+ diagnostic, style, and performance checks
+    - gosec        # security: hardcoded secrets, unsafe calls, etc.
+    - misspell     # spelling in comments and string literals
+    - nilerr       # catches `if err == nil { return err }`
+    - nilnil       # disallows returning nil, nil from error-returning funcs
+    - revive       # drop-in golint replacement with more rules
+    - unconvert    # unnecessary type conversions
+    - unparam      # unused function parameters
+    - wrapcheck    # errors from external packages must be wrapped
+
   exclusions:
     paths:
       - vendor
+
+  settings:
+    cyclop:
+      max-complexity: 10
+
+    errcheck:
+      check-type-assertions: true  # type assertions that discard the ok bool
+      check-blank: true            # `_ = err` assignments
+
+    govet:
+      enable-all: true
+
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+
+formatters:
+  enable:
+    - gci      # import section ordering
+    - gofumpt  # stricter gofmt superset
+
+  exclusions:
+    paths:
+      - vendor
+
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/your-org/your-project)
+
+    gofumpt:
+      extra-rules: true
+
+exclusions:
+  presets:
+    - std-error-handling       # stdlib funcs that commonly return ignored errors
+    - common-false-positives   # well-known false-positive patterns
+
+  rules:
+    - path: _test\.go
+      linters:
+        - gosec      # tests legitimately use hardcoded values and weak crypto
+        - wrapcheck  # test errors need not be wrapped
+        - nilerr     # less relevant in test helpers
