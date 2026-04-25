@@ -3,9 +3,15 @@
 # Replaces placeholder strings with your actual project details.
 #
 # Usage: bash scripts/init.sh
-# Note: uses BSD sed syntax (macOS). On Linux, replace `sed -i ''` with `sed -i`.
 
 set -euo pipefail
+
+# ── Portable in-place sed (GNU sed needs no suffix arg; BSD/macOS sed needs '') ──
+if sed --version 2>/dev/null | grep -q GNU; then
+  sedi() { sed -i "$@"; }
+else
+  sedi() { sed -i '' "$@"; }
+fi
 
 # ── Guards ───────────────────────────────────────────────────────────────────
 [[ -f go.mod ]] || { echo "Error: run this script from the repo root."; exit 1; }
@@ -30,9 +36,13 @@ read -rp "Looks good? [y/N] " CONFIRM
 [[ "${CONFIRM}" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 1; }
 
 # ── Replacements ─────────────────────────────────────────────────────────────
-sed -i '' "s|github.com/your-org/your-project|${MODULE}|g" go.mod
-sed -i '' "s|github.com/your-org/your-project|${MODULE}|g" CLAUDE.md
-sed -i '' "s|your-project-frontend|${PROJECT_NAME}-frontend|g" frontend/package.json
+sedi "s|github.com/your-org/your-project|${MODULE}|g" go.mod CLAUDE.md
+sedi "s|your-project-frontend|${PROJECT_NAME}-frontend|g" frontend/package.json
+
+# Replace the module path in every Go source file.
+while IFS= read -r -d '' f; do
+  sedi "s|github.com/your-org/your-project|${MODULE}|g" "$f"
+done < <(find . -type f -name '*.go' -print0)
 
 echo ""
 echo "Done. Next steps:"

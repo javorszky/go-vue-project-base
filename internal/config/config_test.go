@@ -50,6 +50,21 @@ func TestLoadFrom(t *testing.T) {
 			vars:    map[string]string{"PORT": "not-a-number"},
 			wantErr: true,
 		},
+		{
+			name:    "PORT zero is invalid",
+			vars:    map[string]string{"PORT": "0"},
+			wantErr: true,
+		},
+		{
+			name:    "PORT negative is invalid",
+			vars:    map[string]string{"PORT": "-1"},
+			wantErr: true,
+		},
+		{
+			name:    "PORT above 65535 is invalid",
+			vars:    map[string]string{"PORT": "65536"},
+			wantErr: true,
+		},
 	}
 
 	for _, tc := range tests {

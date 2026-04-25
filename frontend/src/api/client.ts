@@ -3,6 +3,10 @@ const base = import.meta.env.VITE_API_URL ?? ''
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${base}${path}`, init)
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${path}`)
+  const ct = res.headers.get('content-type')
+  if (!ct?.includes('application/json')) {
+    throw new Error(`Expected JSON from ${path}, got: ${ct ?? 'no content-type'}`)
+  }
   return res.json() as Promise<T>
 }
 
