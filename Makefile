@@ -13,7 +13,7 @@ build: tidy
 test: test-go test-fe
 
 test-go:
-	go test ./...
+	go test ./cmd/... ./internal/...
 
 test-fe:
 	cd frontend && npm run test

@@ -21,7 +21,7 @@ shifts. Do not let it drift from the actual code.
 ---
 
 ### `internal/config` — runtime configuration
-`config.go`
+`config.go`, `config_test.go`
 
 | Symbol | Signature | Purpose |
 |--------|-----------|---------|
@@ -37,7 +37,7 @@ Env vars: `PORT` (default `8080`), `DOMAIN` (default `localhost`), `FRONTEND_ORI
 ---
 
 ### `internal/server` — HTTP server
-`server.go`, `static.go`
+`server.go`, `static.go`, `server_test.go`
 
 | Symbol | Signature | Purpose |
 |--------|-----------|---------|
