@@ -9,14 +9,26 @@ shifts. Do not let it drift from the actual code.
 ## Go packages
 
 ### `cmd/server` — process entry point
-`main.go`
+`main.go`, `otel.go`
 
 | Symbol | Signature | Purpose |
 |--------|-----------|---------|
 | `main` | `func main()` | Calls `run()`; exits non-zero on error |
-| `run` | `func run() error` | Loads config, wires signal context, starts server |
+| `run` | `func run() error` | Loads config, sets up OTel, wires signal context, starts server |
+| `setupOTel` | `func setupOTel(ctx context.Context, cfg config.Config) (func(), error)` | Initialises trace/metric/log providers, registers globals, bridges slog; returns flush-shutdown func |
+| `exporterSet` | `struct{ tracer SpanExporter; reader Reader; logger Exporter }` | Groups the three signal exporters for a single transport |
+| `buildExporters` | `func buildExporters(ctx, cfg) (exporterSet, error)` | Single dispatch: stdout / grpc / http based on cfg |
+| `buildTracerProvider` | `func buildTracerProvider(exporter, res, ratio) *TracerProvider` | Wraps exporter in a TracerProvider; no transport logic |
+| `buildMeterProvider` | `func buildMeterProvider(reader, res) *MeterProvider` | Wraps pre-built reader in a MeterProvider |
+| `buildLoggerProvider` | `func buildLoggerProvider(exporter, res) *LoggerProvider` | Wraps exporter in a LoggerProvider |
+| `checkOTelConnectivity` | `func checkOTelConnectivity(endpoint, transport string) error` | Dispatches to gRPC or HTTP probe |
+| `buildStdoutExporters` | `func buildStdoutExporters(cfg) (exporterSet, error)` | `otel_exporters_stdout.go` — stdout exporters for dev |
+| `buildGRPCExporters` | `func buildGRPCExporters(ctx, cfg) (exporterSet, error)` | `otel_exporters_grpc.go` — OTLP gRPC exporters |
+| `checkOTelGRPC` | `func checkOTelGRPC(endpoint string) error` | `otel_exporters_grpc.go` — gRPC protocol-level connectivity probe |
+| `buildHTTPExporters` | `func buildHTTPExporters(ctx, cfg) (exporterSet, error)` | `otel_exporters_http.go` — OTLP HTTP exporters |
+| `checkOTelHTTP` | `func checkOTelHTTP(endpoint string) error` | `otel_exporters_http.go` — HTTP HEAD connectivity probe |
 
-**To change:** startup/shutdown sequence → `run()`. Process exit code → `main()`.
+**To change:** startup/shutdown sequence → `run()`. OTel provider config → `otel.go`. Exporter construction → `otel_exporters_*.go`. Process exit code → `main()`.
 
 ---
 
@@ -25,11 +37,11 @@ shifts. Do not let it drift from the actual code.
 
 | Symbol | Signature | Purpose |
 |--------|-----------|---------|
-| `Config` | `struct{ Domain string; FrontendOrigin string; Port int }` | All runtime config; parsed from env vars |
+| `Config` | `struct{ Domain string; FrontendOrigin string; OTelEndpoint string; OTelTransport string; ServiceName string; OTelExportInterval time.Duration; OTelSamplingRatio float64; Port int }` | All runtime config; parsed from env vars |
 | `Load` | `func Load() (Config, error)` | Parses OS environment; call once at startup |
 | `LoadFrom` | `func LoadFrom(vars map[string]string) (Config, error)` | Parses from an in-memory map; use in tests instead of `os.Setenv` |
 
-Env vars: `PORT` (default `8080`), `DOMAIN` (default `localhost`), `FRONTEND_ORIGIN` (optional).
+Env vars: `PORT` (default `8080`), `DOMAIN` (default `localhost`), `FRONTEND_ORIGIN` (optional), `OTEL_EXPORTER_OTLP_ENDPOINT` (empty → stdout exporters), `OTEL_EXPORTER_OTLP_PROTOCOL` (`grpc` or `http`, default `grpc`), `OTEL_SERVICE_NAME` (default `hoplink`), `OTEL_SAMPLING_RATIO` (float 0–1, default `1.0`), `OTEL_METRIC_EXPORT_INTERVAL` (Go duration, default `15s`).
 
 **To change:** add/remove a config variable → `Config` struct + this table.  
 **Rule:** never call `os.Getenv` outside this package (enforced by golangci-lint `forbidigo`).
@@ -37,7 +49,7 @@ Env vars: `PORT` (default `8080`), `DOMAIN` (default `localhost`), `FRONTEND_ORI
 ---
 
 ### `internal/server` — HTTP server
-`server.go`, `status.go`, `static.go`, `server_test.go`
+`server.go`, `middleware.go`, `status.go`, `static.go`, `server_test.go`
 
 | Symbol | Signature | Purpose |
 |--------|-----------|---------|
@@ -45,9 +57,12 @@ Env vars: `PORT` (default `8080`), `DOMAIN` (default `localhost`), `FRONTEND_ORI
 | `New` | `func New(cfg config.Config, gitSHA, buildTime string) *Server` | Creates Echo instance, registers middleware and routes |
 | `(*Server).Start` | `func (s *Server) Start(ctx context.Context) error` | Runs server until `ctx` is cancelled, then shuts down gracefully (10 s timeout) |
 | `(*Server).Handler` | `func (s *Server) Handler() http.Handler` | Returns the Echo instance as `http.Handler`; use in tests with `httptest` |
+| `otelMiddleware` | `func otelMiddleware(serviceName string) echo.MiddlewareFunc` | Custom Echo v5 OTel middleware: extracts W3C trace context, creates server span, records HTTP method/path/status |
 | `healthHandler` | `func healthHandler(c *echo.Context) error` | `GET /api/v1/health` → `{"status":"ok"}` |
 | `statusHandler` | `func statusHandler(gitSHA, buildTime string) echo.HandlerFunc` | `GET /api/v1/status` → `{"status":"ok","git_sha":"…","build_time":"…"}` |
 | `registerStatic` | `func registerStatic(e *echo.Echo)` | Serves embedded Vue SPA (Mode 1 only; delete this file to move to Mode 2) |
+
+Note: `otelecho` (the contrib package) targets Echo v4 and cannot be used here. `otelMiddleware` is the Echo v5 replacement.
 
 **To add a route:** `New()` in `server.go`.  
 **To change graceful timeout:** `Start()` in `server.go`.  

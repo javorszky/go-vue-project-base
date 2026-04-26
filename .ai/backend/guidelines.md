@@ -4,7 +4,7 @@
 
 - **HTTP framework**: [labstack/echo](https://echo.labstack.com/)
 - **Logging**: `log/slog` (standard library)
-- **Observability**: `log/slog` structured logging today — TODO: add OpenTelemetry traces and metrics (see `otel_todo.md`)
+- **Observability**: OpenTelemetry traces, metrics, and logs via the OTel Go SDK. The global slog logger is bridged into the OTel log pipeline via `otelslog`. In dev (no `OTEL_EXPORTER_OTLP_ENDPOINT`) exporters write to stdout; in prod they export via OTLP gRPC.
 
 ## Common commands
 

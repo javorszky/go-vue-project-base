@@ -30,7 +30,7 @@ The system is split into two fully independent parts:
 - Expose REST endpoints under `/api/v1/`.
 - Validate all input at the API boundary; return structured errors with appropriate HTTP status codes.
 - Own all business logic, persistence, and external service integrations.
-- Emit structured logs via `log/slog` for every request. TODO: add OpenTelemetry traces and metrics (see `otel_todo.md`).
+- Emit structured logs via `log/slog` for every request. The global slog logger is bridged to OpenTelemetry; traces, metrics, and logs are exported via OTLP gRPC in production (stdout in dev).
 
 ## Frontend responsibilities
 - Fetch data from the backend API; own all rendering and UI state.

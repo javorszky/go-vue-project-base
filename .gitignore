@@ -8,6 +8,7 @@
 *.out
 /bin/
 /dist/
+/server
 vendor/
 
 # Frontend
@@ -28,3 +29,6 @@ frontend/.env.*.local
 .idea/
 *.swp
 *.swo
+
+# Claude Code — local settings are user-specific, not project-wide
+.claude/settings.local.json
