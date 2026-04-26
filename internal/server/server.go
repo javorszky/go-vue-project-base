@@ -93,6 +93,10 @@ func (s *Server) Handler() http.Handler {
 	return s.echo
 }
 
+// healthHandler is a liveness probe: it returns 200 as long as the process
+// responds. It does not check dependencies. When the first backing service
+// lands, split into /livez (always 200) and /readyz (checks deps) and
+// deprecate this endpoint.
 func healthHandler(c *echo.Context) error {
 	if err := c.JSON(http.StatusOK, map[string]string{"status": "ok"}); err != nil {
 		return fmt.Errorf("write response: %w", err)
