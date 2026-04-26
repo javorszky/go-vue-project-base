@@ -4,7 +4,7 @@
 
 - **HTTP framework**: [labstack/echo](https://echo.labstack.com/)
 - **Logging**: `log/slog` (standard library)
-- **Observability**: OpenTelemetry — traces, metrics, and logs (via the Go OTel SDK)
+- **Observability**: `log/slog` structured logging today — TODO: add OpenTelemetry traces and metrics (see `otel_todo.md`)
 
 ## Common commands
 
