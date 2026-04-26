@@ -72,7 +72,20 @@ func setupOTel(ctx context.Context, cfg config.Config) (func(), error) {
 	// Save the pre-bridge logger so the shutdown closure can log lp's own
 	// shutdown error after the provider (and therefore the bridge) is gone.
 	preOTelLogger := slog.Default()
-	slog.SetDefault(otelslog.NewLogger(cfg.ServiceName))
+
+	otelHandler := otelslog.NewHandler(cfg.ServiceName)
+	var handler slog.Handler
+	if cfg.OTelEndpoint != "" {
+		// Prod: fan-out to the original stderr handler AND the OTel bridge.
+		// If the collector is unreachable the OTel SDK silently drops records;
+		// the stderr handler guarantees logs are always visible.
+		handler = newMultiHandler(preOTelLogger.Handler(), otelHandler)
+	} else {
+		// Dev: OTel bridge only — the stdoutlog exporter writes to stdout and
+		// is always available, so no fallback is needed.
+		handler = otelHandler
+	}
+	slog.SetDefault(slog.New(handler))
 
 	return func() {
 		flushCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), otelShutdownTimeout)
@@ -132,6 +145,49 @@ func buildMeterProvider(ctx context.Context, cfg config.Config, res *sdkresource
 		sdkmetric.WithResource(res),
 		sdkmetric.WithReader(reader),
 	), nil
+}
+
+// multiHandler fans out slog records to multiple handlers. Each record is
+// cloned before being passed so handlers cannot interfere with each other.
+type multiHandler struct{ handlers []slog.Handler }
+
+func newMultiHandler(handlers ...slog.Handler) multiHandler {
+	return multiHandler{handlers: handlers}
+}
+
+func (m multiHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	for _, h := range m.handlers {
+		if h.Enabled(ctx, level) {
+			return true
+		}
+	}
+	return false
+}
+
+func (m multiHandler) Handle(ctx context.Context, r slog.Record) error { //nolint:gocritic // slog.Handler interface mandates this signature
+	var errs []error
+	for _, h := range m.handlers {
+		if h.Enabled(ctx, r.Level) {
+			errs = append(errs, h.Handle(ctx, r.Clone()))
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func (m multiHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	handlers := make([]slog.Handler, len(m.handlers))
+	for i, h := range m.handlers {
+		handlers[i] = h.WithAttrs(attrs)
+	}
+	return multiHandler{handlers: handlers}
+}
+
+func (m multiHandler) WithGroup(name string) slog.Handler {
+	handlers := make([]slog.Handler, len(m.handlers))
+	for i, h := range m.handlers {
+		handlers[i] = h.WithGroup(name)
+	}
+	return multiHandler{handlers: handlers}
 }
 
 func buildLoggerProvider(ctx context.Context, cfg config.Config, res *sdkresource.Resource) (*sdklog.LoggerProvider, error) {
