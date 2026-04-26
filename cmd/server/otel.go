@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"time"
 
 	"go.opentelemetry.io/contrib/bridges/otelslog"
@@ -69,17 +70,20 @@ func setupOTel(ctx context.Context, cfg config.Config) (func(), error) {
 	otel.SetMeterProvider(mp)
 	logGlobal.SetLoggerProvider(lp)
 
-	// Save the pre-bridge logger so the shutdown closure can log lp's own
-	// shutdown error after the provider (and therefore the bridge) is gone.
-	preOTelLogger := slog.Default()
+	// Must not use slog.Default().Handler() (defaultHandler) here: slog.SetDefault
+	// installs multiHandler as log.Default()'s writer via handlerWriter, so
+	// defaultHandler → log.Default().output (acquires mu) → handlerWriter.Write →
+	// multiHandler → defaultHandler → re-acquire mu → self-deadlock on same goroutine.
+	// JSONHandler writes directly to os.Stderr and never touches log.Default().
+	stderrHandler := slog.NewJSONHandler(os.Stderr, nil)
+	stderrLogger := slog.New(stderrHandler)
 
 	otelHandler := otelslog.NewHandler(cfg.ServiceName)
 	var handler slog.Handler
 	if cfg.OTelEndpoint != "" {
-		// Prod: fan-out to the original stderr handler AND the OTel bridge.
-		// The OTel bridge is wrapped in asyncHandler so a slow or unreachable
-		// collector can never block the request path or the stderr output.
-		handler = newMultiHandler(preOTelLogger.Handler(), newAsyncHandler(otelHandler))
+		// Prod: fan-out to stderr AND the OTel bridge. asyncHandler wraps the
+		// bridge so a slow or unreachable collector cannot block the request path.
+		handler = newMultiHandler(stderrHandler, newAsyncHandler(otelHandler))
 	} else {
 		// Dev: OTel bridge only — the stdoutlog exporter writes to stdout and
 		// is always available, so no fallback is needed.
@@ -97,7 +101,7 @@ func setupOTel(ctx context.Context, cfg config.Config) (func(), error) {
 			slog.Error("meter provider shutdown", "error", err)
 		}
 		if err := lp.Shutdown(flushCtx); err != nil {
-			preOTelLogger.Error("logger provider shutdown", "error", err)
+			stderrLogger.Error("logger provider shutdown", "error", err)
 		}
 	}, nil
 }

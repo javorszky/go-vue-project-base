@@ -73,6 +73,16 @@ This records AI involvement without adding the AI as a contributor to the graph.
 
 **[`.ai/index.md`](.ai/index.md)** — package-by-package map of every Go and frontend file: exported symbols, signatures, purposes, and a navigation guide for common tasks. Read it at the start of any session. **Keep it current:** after every code change that adds, removes, or renames a symbol or file, update the relevant section of `.ai/index.md` before finishing the task.
 
+## Code comments
+
+The default "one short line max" rule for comments is relaxed for this project. Multi-line comments are allowed — and encouraged — when explaining:
+
+- Why a specific value, pattern, or workaround is in place (hidden constraint, non-obvious invariant, bug workaround)
+- Edge cases that would surprise a future reader
+- The reasoning behind a deliberate trade-off
+
+Do not write comments that just restate what the code does. Explain the *why*, not the *what*.
+
 ## Domain guidelines
 
 Load only the file(s) relevant to the task at hand.
