@@ -16,12 +16,19 @@ shifts. Do not let it drift from the actual code.
 | `main` | `func main()` | Calls `run()`; exits non-zero on error |
 | `run` | `func run() error` | Loads config, sets up OTel, wires signal context, starts server |
 | `setupOTel` | `func setupOTel(ctx context.Context, cfg config.Config) (func(), error)` | Initialises trace/metric/log providers, registers globals, bridges slog; returns flush-shutdown func |
-| `buildTracerProvider` | `func buildTracerProvider(ctx, cfg, res) (*sdktrace.TracerProvider, error)` | Stdout (dev), OTLP gRPC, or OTLP HTTP exporter based on cfg |
-| `buildMeterProvider` | `func buildMeterProvider(ctx, cfg, res) (*sdkmetric.MeterProvider, error)` | Same dev/grpc/http branching for metrics |
-| `buildLoggerProvider` | `func buildLoggerProvider(ctx, cfg, res) (*sdklog.LoggerProvider, error)` | Same dev/grpc/http branching for logs |
-| `checkOTelConnectivity` | `func checkOTelConnectivity(endpoint, transport string) error` | TCP probe for gRPC; HTTP HEAD /v1/traces for HTTP transport |
+| `exporterSet` | `struct{ tracer SpanExporter; reader Reader; logger Exporter }` | Groups the three signal exporters for a single transport |
+| `buildExporters` | `func buildExporters(ctx, cfg) (exporterSet, error)` | Single dispatch: stdout / grpc / http based on cfg |
+| `buildTracerProvider` | `func buildTracerProvider(exporter, res, ratio) *TracerProvider` | Wraps exporter in a TracerProvider; no transport logic |
+| `buildMeterProvider` | `func buildMeterProvider(reader, res) *MeterProvider` | Wraps pre-built reader in a MeterProvider |
+| `buildLoggerProvider` | `func buildLoggerProvider(exporter, res) *LoggerProvider` | Wraps exporter in a LoggerProvider |
+| `checkOTelConnectivity` | `func checkOTelConnectivity(endpoint, transport string) error` | Dispatches to gRPC or HTTP probe |
+| `buildStdoutExporters` | `func buildStdoutExporters(cfg) (exporterSet, error)` | `otel_exporters_stdout.go` — stdout exporters for dev |
+| `buildGRPCExporters` | `func buildGRPCExporters(ctx, cfg) (exporterSet, error)` | `otel_exporters_grpc.go` — OTLP gRPC exporters |
+| `checkOTelGRPC` | `func checkOTelGRPC(endpoint string) error` | `otel_exporters_grpc.go` — gRPC protocol-level connectivity probe |
+| `buildHTTPExporters` | `func buildHTTPExporters(ctx, cfg) (exporterSet, error)` | `otel_exporters_http.go` — OTLP HTTP exporters |
+| `checkOTelHTTP` | `func checkOTelHTTP(endpoint string) error` | `otel_exporters_http.go` — HTTP HEAD connectivity probe |
 
-**To change:** startup/shutdown sequence → `run()`. OTel provider config → `otel.go`. Process exit code → `main()`.
+**To change:** startup/shutdown sequence → `run()`. OTel provider config → `otel.go`. Exporter construction → `otel_exporters_*.go`. Process exit code → `main()`.
 
 ---
 

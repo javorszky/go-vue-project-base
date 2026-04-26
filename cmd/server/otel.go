@@ -5,22 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net"
-	"net/http"
 	"os"
 	"time"
 
 	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
-	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
-	"go.opentelemetry.io/otel/exporters/stdout/stdoutlog"
-	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	logGlobal "go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/propagation"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
@@ -37,6 +26,28 @@ const (
 	otelConnectTimeout  = 5 * time.Second
 	otelTransportHTTP   = "http"
 )
+
+// exporterSet groups the three signal exporters/readers produced by a single
+// transport factory. reader is a pre-wrapped PeriodicReader so buildMeterProvider
+// does not need to know the export interval.
+type exporterSet struct {
+	tracer sdktrace.SpanExporter
+	reader sdkmetric.Reader
+	logger sdklog.Exporter
+}
+
+// buildExporters is the single dispatch point for exporter construction.
+// All transport-specific logic lives in the three otel_exporters_*.go files.
+func buildExporters(ctx context.Context, cfg config.Config) (exporterSet, error) {
+	switch {
+	case cfg.OTelEndpoint == "":
+		return buildStdoutExporters(cfg)
+	case cfg.OTelTransport == otelTransportHTTP:
+		return buildHTTPExporters(ctx, cfg)
+	default:
+		return buildGRPCExporters(ctx, cfg)
+	}
+}
 
 // setupOTel initialises the three OTel signal providers (trace, metric, log),
 // registers them as globals, and bridges the global slog logger into the OTel
@@ -66,20 +77,14 @@ func setupOTel(ctx context.Context, cfg config.Config) (func(), error) {
 		}
 	}
 
-	tp, err := buildTracerProvider(ctx, cfg, res)
+	exporters, err := buildExporters(ctx, cfg)
 	if err != nil {
-		return nil, fmt.Errorf("build tracer provider: %w", err)
+		return nil, fmt.Errorf("build exporters: %w", err)
 	}
 
-	mp, err := buildMeterProvider(ctx, cfg, res)
-	if err != nil {
-		return nil, errors.Join(fmt.Errorf("build meter provider: %w", err), tp.Shutdown(ctx))
-	}
-
-	lp, err := buildLoggerProvider(ctx, cfg, res)
-	if err != nil {
-		return nil, errors.Join(fmt.Errorf("build logger provider: %w", err), tp.Shutdown(ctx), mp.Shutdown(ctx))
-	}
+	tp := buildTracerProvider(exporters.tracer, res, cfg.OTelSamplingRatio)
+	mp := buildMeterProvider(exporters.reader, res)
+	lp := buildLoggerProvider(exporters.logger, res)
 
 	otel.SetTracerProvider(tp)
 	otel.SetMeterProvider(mp)
@@ -124,101 +129,36 @@ func buildSlogHandler(endpoint string, otelHandler slog.Handler) (slog.Handler, 
 	return otelHandler, slog.New(stderrHandler)
 }
 
-// checkOTelConnectivity verifies the OTLP endpoint is reachable before the
-// server starts. The probe is transport-specific:
-//   - grpc: TCP dial only — gRPC uses HTTP/2 framing over TCP, so a successful
-//     TCP connection confirms the port is open. A non-gRPC service on the same
-//     port would pass this check, but that misconfiguration surfaces quickly
-//     when the first export attempt fails.
-//   - http: HTTP HEAD to /v1/traces — confirms an HTTP server is listening and
-//     responding, not just that the port is open.
+// checkOTelConnectivity dispatches to a transport-appropriate probe.
+// grpc uses a protocol-level check (see otel_exporters_grpc.go);
+// http uses an HTTP HEAD request (see otel_exporters_http.go).
 func checkOTelConnectivity(endpoint, transport string) error {
 	if transport == otelTransportHTTP {
 		return checkOTelHTTP(endpoint)
 	}
-	return checkOTelTCP(endpoint)
+	return checkOTelGRPC(endpoint)
 }
 
-func checkOTelTCP(endpoint string) error {
-	conn, err := net.DialTimeout("tcp", endpoint, otelConnectTimeout)
-	if err != nil {
-		return fmt.Errorf("otel endpoint %q unreachable: %w", endpoint, err)
-	}
-	if err := conn.Close(); err != nil {
-		return fmt.Errorf("close otel probe connection: %w", err)
-	}
-	return nil
-}
-
-func checkOTelHTTP(endpoint string) error {
-	client := &http.Client{Timeout: otelConnectTimeout}
-	resp, err := client.Head("http://" + endpoint + "/v1/traces")
-	if err != nil {
-		return fmt.Errorf("otel http endpoint %q unreachable: %w", endpoint, err)
-	}
-	_ = resp.Body.Close()
-	return nil
-}
-
-func buildTracerProvider(ctx context.Context, cfg config.Config, res *sdkresource.Resource) (*sdktrace.TracerProvider, error) {
-	var exporter sdktrace.SpanExporter
-	var err error
-	switch {
-	case cfg.OTelEndpoint == "":
-		exporter, err = stdouttrace.New(stdouttrace.WithPrettyPrint())
-	case cfg.OTelTransport == otelTransportHTTP:
-		exporter, err = otlptracehttp.New(ctx,
-			otlptracehttp.WithEndpoint(cfg.OTelEndpoint),
-			otlptracehttp.WithInsecure(),
-		)
-	default:
-		exporter, err = otlptracegrpc.New(ctx,
-			otlptracegrpc.WithEndpoint(cfg.OTelEndpoint),
-			otlptracegrpc.WithInsecure(),
-		)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("create trace exporter: %w", err)
-	}
+func buildTracerProvider(exporter sdktrace.SpanExporter, res *sdkresource.Resource, ratio float64) *sdktrace.TracerProvider {
 	return sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exporter),
 		sdktrace.WithResource(res),
-		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(cfg.OTelSamplingRatio))),
-	), nil
+		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(ratio))),
+	)
 }
 
-func buildMeterProvider(ctx context.Context, cfg config.Config, res *sdkresource.Resource) (*sdkmetric.MeterProvider, error) {
-	var reader sdkmetric.Reader
-	switch {
-	case cfg.OTelEndpoint == "":
-		exporter, err := stdoutmetric.New(stdoutmetric.WithPrettyPrint())
-		if err != nil {
-			return nil, fmt.Errorf("create stdout metric exporter: %w", err)
-		}
-		reader = sdkmetric.NewPeriodicReader(exporter, sdkmetric.WithInterval(cfg.OTelExportInterval))
-	case cfg.OTelTransport == otelTransportHTTP:
-		exporter, err := otlpmetrichttp.New(ctx,
-			otlpmetrichttp.WithEndpoint(cfg.OTelEndpoint),
-			otlpmetrichttp.WithInsecure(),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("create otlp metric exporter: %w", err)
-		}
-		reader = sdkmetric.NewPeriodicReader(exporter, sdkmetric.WithInterval(cfg.OTelExportInterval))
-	default:
-		exporter, err := otlpmetricgrpc.New(ctx,
-			otlpmetricgrpc.WithEndpoint(cfg.OTelEndpoint),
-			otlpmetricgrpc.WithInsecure(),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("create otlp metric exporter: %w", err)
-		}
-		reader = sdkmetric.NewPeriodicReader(exporter, sdkmetric.WithInterval(cfg.OTelExportInterval))
-	}
+func buildMeterProvider(reader sdkmetric.Reader, res *sdkresource.Resource) *sdkmetric.MeterProvider {
 	return sdkmetric.NewMeterProvider(
 		sdkmetric.WithResource(res),
 		sdkmetric.WithReader(reader),
-	), nil
+	)
+}
+
+func buildLoggerProvider(exporter sdklog.Exporter, res *sdkresource.Resource) *sdklog.LoggerProvider {
+	return sdklog.NewLoggerProvider(
+		sdklog.WithResource(res),
+		sdklog.WithProcessor(sdklog.NewBatchProcessor(exporter)),
+	)
 }
 
 // asyncLogBufSize is the number of log records the asyncHandler can queue
@@ -313,30 +253,4 @@ func (m multiHandler) WithGroup(name string) slog.Handler {
 		handlers[i] = h.WithGroup(name)
 	}
 	return multiHandler{handlers: handlers}
-}
-
-func buildLoggerProvider(ctx context.Context, cfg config.Config, res *sdkresource.Resource) (*sdklog.LoggerProvider, error) {
-	var exporter sdklog.Exporter
-	var err error
-	switch {
-	case cfg.OTelEndpoint == "":
-		exporter, err = stdoutlog.New()
-	case cfg.OTelTransport == otelTransportHTTP:
-		exporter, err = otlploghttp.New(ctx,
-			otlploghttp.WithEndpoint(cfg.OTelEndpoint),
-			otlploghttp.WithInsecure(),
-		)
-	default:
-		exporter, err = otlploggrpc.New(ctx,
-			otlploggrpc.WithEndpoint(cfg.OTelEndpoint),
-			otlploggrpc.WithInsecure(),
-		)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("create log exporter: %w", err)
-	}
-	return sdklog.NewLoggerProvider(
-		sdklog.WithResource(res),
-		sdklog.WithProcessor(sdklog.NewBatchProcessor(exporter)),
-	), nil
 }

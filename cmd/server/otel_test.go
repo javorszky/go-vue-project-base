@@ -10,18 +10,22 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 )
 
 func TestCheckOTelConnectivity(t *testing.T) {
-	t.Run("grpc passes when endpoint is listening", func(t *testing.T) {
+	t.Run("grpc passes when grpc server is listening", func(t *testing.T) {
+		srv := grpc.NewServer()
 		ln, err := net.Listen("tcp", "127.0.0.1:0")
 		require.NoError(t, err)
-		t.Cleanup(func() { _ = ln.Close() })
+		go srv.Serve(ln) //nolint:errcheck // returns ErrServerStopped on clean shutdown
+		t.Cleanup(srv.Stop)
 
 		require.NoError(t, checkOTelConnectivity(ln.Addr().String(), "grpc"))
 	})
 
 	t.Run("grpc fails when nothing is listening", func(t *testing.T) {
+		// Grab a port then immediately release it so nothing is listening.
 		ln, err := net.Listen("tcp", "127.0.0.1:0")
 		require.NoError(t, err)
 		addr := ln.Addr().String()
@@ -38,9 +42,7 @@ func TestCheckOTelConnectivity(t *testing.T) {
 		}))
 		t.Cleanup(srv.Close)
 
-		// srv.URL is "http://host:port" — strip the scheme for the endpoint.
-		endpoint := srv.Listener.Addr().String()
-		require.NoError(t, checkOTelConnectivity(endpoint, "http"))
+		require.NoError(t, checkOTelConnectivity(srv.Listener.Addr().String(), "http"))
 	})
 
 	t.Run("http fails when nothing is listening", func(t *testing.T) {
