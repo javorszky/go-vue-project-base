@@ -18,7 +18,9 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY . .
+COPY cmd/ ./cmd/
+COPY internal/ ./internal/
+COPY api/ ./api/
 # Overwrite the placeholder with the freshly compiled SPA.
 # Vite builds to ../internal/ui/dist (relative to /frontend workdir) = /internal/ui/dist.
 COPY --from=frontend-builder /internal/ui/dist ./internal/ui/dist

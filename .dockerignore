@@ -32,5 +32,8 @@ frontend/coverage
 # runs first and overwrites it.
 
 # Docs and local scripts
-*.md
-scripts
+README.md
+CLAUDE.md
+otel_todo.md
+to_fix.md
+scripts/
