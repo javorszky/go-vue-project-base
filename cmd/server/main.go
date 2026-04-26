@@ -23,8 +23,12 @@ var (
 )
 
 func main() {
+	// Capture the default logger before run() may replace it with the OTel
+	// bridge. The bridge's logger provider is shut down inside run()'s defers,
+	// so any slog call after run() returns would be silently dropped.
+	fatal := slog.Default()
 	if err := run(); err != nil {
-		slog.Error(err.Error())
+		fatal.Error(err.Error())
 		os.Exit(1)
 	}
 }
