@@ -77,9 +77,9 @@ func setupOTel(ctx context.Context, cfg config.Config) (func(), error) {
 	var handler slog.Handler
 	if cfg.OTelEndpoint != "" {
 		// Prod: fan-out to the original stderr handler AND the OTel bridge.
-		// If the collector is unreachable the OTel SDK silently drops records;
-		// the stderr handler guarantees logs are always visible.
-		handler = newMultiHandler(preOTelLogger.Handler(), otelHandler)
+		// The OTel bridge is wrapped in asyncHandler so a slow or unreachable
+		// collector can never block the request path or the stderr output.
+		handler = newMultiHandler(preOTelLogger.Handler(), newAsyncHandler(otelHandler))
 	} else {
 		// Dev: OTel bridge only — the stdoutlog exporter writes to stdout and
 		// is always available, so no fallback is needed.
@@ -147,8 +147,59 @@ func buildMeterProvider(ctx context.Context, cfg config.Config, res *sdkresource
 	), nil
 }
 
-// multiHandler fans out slog records to multiple handlers. Each record is
-// cloned before being passed so handlers cannot interfere with each other.
+// asyncLogBufSize is the number of log records the asyncHandler can queue
+// before it starts dropping. Sized to absorb short bursts while the
+// collector recovers without unbounded memory growth.
+const asyncLogBufSize = 512
+
+// asyncHandler wraps a slog.Handler and processes records off the hot path via
+// a buffered channel and a single background goroutine. Handle does a
+// non-blocking channel send and returns immediately; records are dropped (not
+// queued indefinitely) when the buffer is full, so the caller is never held up
+// even when the underlying handler or collector is slow or unreachable.
+type asyncHandler struct {
+	inner slog.Handler
+	ch    chan slog.Record
+}
+
+func newAsyncHandler(h slog.Handler) *asyncHandler {
+	a := &asyncHandler{inner: h, ch: make(chan slog.Record, asyncLogBufSize)}
+	go func() {
+		for r := range a.ch {
+			if err := a.inner.Handle(context.Background(), r); err != nil {
+				slog.Error("async log handler", "error", err)
+			}
+		}
+	}()
+	return a
+}
+
+func (a *asyncHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return a.inner.Enabled(ctx, level)
+}
+
+func (a *asyncHandler) Handle(ctx context.Context, r slog.Record) error { //nolint:gocritic // slog.Handler interface mandates this signature
+	if !a.inner.Enabled(ctx, r.Level) {
+		return nil
+	}
+	select {
+	case a.ch <- r.Clone():
+	default: // buffer full — drop rather than block the caller
+	}
+	return nil
+}
+
+func (a *asyncHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return newAsyncHandler(a.inner.WithAttrs(attrs))
+}
+
+func (a *asyncHandler) WithGroup(name string) slog.Handler {
+	return newAsyncHandler(a.inner.WithGroup(name))
+}
+
+// multiHandler fans out slog records to multiple handlers sequentially.
+// Handlers that must not block the caller (e.g. the OTel bridge) should be
+// wrapped in asyncHandler before being passed here.
 type multiHandler struct{ handlers []slog.Handler }
 
 func newMultiHandler(handlers ...slog.Handler) multiHandler {
