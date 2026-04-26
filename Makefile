@@ -6,9 +6,8 @@ IMAGE ?= go-vue-template
 tidy:
 	go mod tidy
 	go mod download
-	go mod vendor
 
-build: tidy
+build:
 	go build -trimpath \
 		-ldflags="-s -w -X main.gitSHA=$(shell git rev-parse HEAD) -X main.buildTime=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)" \
 		-o bin/server ./cmd/server
