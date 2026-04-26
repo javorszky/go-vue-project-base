@@ -4,6 +4,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -24,7 +25,32 @@ func New(cfg config.Config, gitSHA, buildTime string) *Server {
 	e := echo.New()
 
 	e.Use(middleware.Recover())
-	e.Use(middleware.RequestLogger())
+	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogMethod:   true,
+		LogURI:      true,
+		LogStatus:   true,
+		LogLatency:  true,
+		HandleError: true,
+		LogValuesFunc: func(c *echo.Context, v middleware.RequestLoggerValues) error {
+			if v.Error == nil {
+				slog.LogAttrs((*c).Request().Context(), slog.LevelInfo, "request",
+					slog.String("method", v.Method),
+					slog.String("uri", v.URI),
+					slog.Int("status", v.Status),
+					slog.Duration("latency", v.Latency),
+				)
+			} else {
+				slog.LogAttrs((*c).Request().Context(), slog.LevelError, "request",
+					slog.String("method", v.Method),
+					slog.String("uri", v.URI),
+					slog.Int("status", v.Status),
+					slog.Duration("latency", v.Latency),
+					slog.String("error", v.Error.Error()),
+				)
+			}
+			return nil
+		},
+	}))
 
 	// CORS is only needed in decoupled deployments where the frontend and
 	// backend run on different origins. In embedded mode they share an origin
