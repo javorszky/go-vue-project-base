@@ -52,6 +52,8 @@ func New(cfg config.Config, gitSHA, buildTime string) *Server {
 		},
 	}))
 
+	e.Use(middleware.BodyLimit(10 * 1024 * 1024))
+
 	// CORS is only needed in decoupled deployments where the frontend and
 	// backend run on different origins. In embedded mode they share an origin
 	// so no CORS headers are required.
@@ -73,6 +75,11 @@ func (s *Server) Start(ctx context.Context) error {
 	sc := echo.StartConfig{
 		Address:         s.addr,
 		GracefulTimeout: 10 * time.Second,
+		BeforeServeFunc: func(srv *http.Server) error {
+			srv.ReadHeaderTimeout = 5 * time.Second
+			srv.ReadTimeout = 30 * time.Second
+			return nil
+		},
 	}
 	if err := sc.Start(ctx, s.echo); err != nil {
 		return fmt.Errorf("start server: %w", err)
