@@ -15,6 +15,8 @@ linters:
     - unparam      # unused function parameters
     - wrapcheck    # errors from external packages must be wrapped
     - forbidigo    # forbids direct os.Getenv / os.Setenv outside the config package
+    - mnd          # magic number detector
+    - goconst      # repeated string literals that should be constants
 
   exclusions:
     paths:
@@ -64,6 +66,9 @@ linters:
         - diagnostic
         - style
         - performance
+      settings:
+        hugeParam:
+          sizeThreshold: 128
 
 formatters:
   enable:

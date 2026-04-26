@@ -5,6 +5,7 @@ package config
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/caarlos0/env/v11"
 )
@@ -12,9 +13,13 @@ import (
 // Config holds all runtime configuration for the application, parsed from
 // environment variables at startup. Add new fields here as the app grows.
 type Config struct {
-	Domain         string `env:"DOMAIN"          envDefault:"localhost"`
-	FrontendOrigin string `env:"FRONTEND_ORIGIN"`
-	Port           int    `env:"PORT"            envDefault:"8080"`
+	Domain             string        `env:"DOMAIN"                        envDefault:"localhost"`
+	FrontendOrigin     string        `env:"FRONTEND_ORIGIN"`
+	OTelEndpoint       string        `env:"OTEL_EXPORTER_OTLP_ENDPOINT"`
+	ServiceName        string        `env:"OTEL_SERVICE_NAME"             envDefault:"hoplink"`
+	OTelExportInterval time.Duration `env:"OTEL_METRIC_EXPORT_INTERVAL"   envDefault:"15s"`
+	OTelSamplingRatio  float64       `env:"OTEL_SAMPLING_RATIO"           envDefault:"1.0"`
+	Port               int           `env:"PORT"                          envDefault:"8080"`
 }
 
 // Load parses the process environment into Config. Call once at startup and
@@ -32,6 +37,12 @@ func LoadFrom(vars map[string]string) (Config, error) {
 func (c Config) validate() error {
 	if c.Port < 1 || c.Port > 65535 {
 		return fmt.Errorf("config: PORT must be between 1 and 65535, got %d", c.Port)
+	}
+	if c.OTelSamplingRatio < 0 || c.OTelSamplingRatio > 1 {
+		return fmt.Errorf("config: OTEL_SAMPLING_RATIO must be between 0.0 and 1.0, got %g", c.OTelSamplingRatio)
+	}
+	if c.OTelExportInterval <= 0 {
+		return fmt.Errorf("config: OTEL_METRIC_EXPORT_INTERVAL must be positive, got %s", c.OTelExportInterval)
 	}
 	return nil
 }

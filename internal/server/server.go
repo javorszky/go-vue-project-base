@@ -14,6 +14,13 @@ import (
 	"github.com/your-org/your-project/internal/config"
 )
 
+const (
+	bodyLimitBytes    = 10 * 1024 * 1024 // 10 MiB
+	gracefulTimeout   = 10 * time.Second
+	readHeaderTimeout = 5 * time.Second
+	readTimeout       = 30 * time.Second
+)
+
 // Server wraps the Echo instance and the address it will listen on.
 type Server struct {
 	echo *echo.Echo
@@ -25,6 +32,7 @@ func New(cfg config.Config, gitSHA, buildTime string) *Server {
 	e := echo.New()
 
 	e.Use(middleware.Recover())
+	e.Use(otelMiddleware(cfg.ServiceName))
 	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogMethod:   true,
 		LogURI:      true,
@@ -52,7 +60,7 @@ func New(cfg config.Config, gitSHA, buildTime string) *Server {
 		},
 	}))
 
-	e.Use(middleware.BodyLimit(10 * 1024 * 1024))
+	e.Use(middleware.BodyLimit(bodyLimitBytes))
 
 	// CORS is only needed in decoupled deployments where the frontend and
 	// backend run on different origins. In embedded mode they share an origin
@@ -74,10 +82,10 @@ func New(cfg config.Config, gitSHA, buildTime string) *Server {
 func (s *Server) Start(ctx context.Context) error {
 	sc := echo.StartConfig{
 		Address:         s.addr,
-		GracefulTimeout: 10 * time.Second,
+		GracefulTimeout: gracefulTimeout,
 		BeforeServeFunc: func(srv *http.Server) error {
-			srv.ReadHeaderTimeout = 5 * time.Second
-			srv.ReadTimeout = 30 * time.Second
+			srv.ReadHeaderTimeout = readHeaderTimeout
+			srv.ReadTimeout = readTimeout
 			return nil
 		},
 	}
