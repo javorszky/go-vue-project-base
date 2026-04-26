@@ -1,6 +1,8 @@
 package server
 
 import (
+	"strings"
+
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
 
@@ -16,5 +18,8 @@ func registerStatic(e *echo.Echo) {
 		HTML5:      true,
 		Root:       "dist",
 		Filesystem: ui.FS,
+		Skipper: func(c *echo.Context) bool {
+			return strings.HasPrefix((*c).Request().URL.Path, "/api/")
+		},
 	}))
 }
