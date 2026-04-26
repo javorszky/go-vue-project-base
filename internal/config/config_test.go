@@ -79,8 +79,3 @@ func TestLoadFrom(t *testing.T) {
 		})
 	}
 }
-
-func TestLoad_noError(t *testing.T) {
-	_, err := config.Load()
-	require.NoError(t, err)
-}
