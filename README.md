@@ -1,8 +1,12 @@
 # go-vue-template
 
-A GitHub template for production-ready full-stack applications: Go backend, Vue 3 frontend, strict tooling, and a clear path from single-binary to fully decoupled deployment.
+A GitHub template for production-ready full-stack applications: Go backend, Vue 3 frontend, strict tooling, and a clear path from single-binary to fully decoupled deployment. It's set up to be developed on a mac locally.
 
 ---
+## Badges
+
+[![codecov](https://codecov.io/github/javorszky/go-vue-project-base/graph/badge.svg?token=MC9XSGOEXE)](https://codecov.io/github/javorszky/go-vue-project-base)
+
 
 ## Quick start
 
