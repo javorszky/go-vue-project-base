@@ -59,6 +59,16 @@ Before inferring how a library or tool works from its source or from examples in
 
 This prevents using deprecated APIs, outdated configuration syntax, or patterns that were valid in an older version but have since changed.
 
+## Git commit trailers
+
+Use `Assisted-by` as the trailer when AI assisted with a commit, not `Co-Authored-By` or `Co-Developed-By`:
+
+```
+Assisted-by: Claude Sonnet 4.6 <noreply@anthropic.com>
+```
+
+This records AI involvement without adding the AI as a contributor to the graph.
+
 ## Codebase index
 
 **[`.ai/index.md`](.ai/index.md)** — package-by-package map of every Go and frontend file: exported symbols, signatures, purposes, and a navigation guide for common tasks. Read it at the start of any session. **Keep it current:** after every code change that adds, removes, or renames a symbol or file, update the relevant section of `.ai/index.md` before finishing the task.

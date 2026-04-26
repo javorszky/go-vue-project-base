@@ -38,8 +38,7 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	info := server.BuildInfo{GitSHA: gitSHA, BuildTime: buildTime}
-	if err := server.New(cfg, info).Start(ctx); err != nil {
+	if err := server.New(cfg, gitSHA, buildTime).Start(ctx); err != nil {
 		return fmt.Errorf("run server: %w", err)
 	}
 	return nil

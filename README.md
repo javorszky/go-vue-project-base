@@ -97,7 +97,7 @@ All endpoints are versioned under `/api/v1/`. Authentication uses `Authorization
 
 - **Language:** Go 1.26, module path set by `scripts/init.sh`
 - **Framework:** [Echo](https://echo.labstack.com/) — minimal, fast, request-lifecycle hooks
-- **Observability:** OpenTelemetry traces, metrics, and structured logs on every request
+- **Observability:** `log/slog` structured logging today — TODO: add OpenTelemetry traces and metrics (see `otel_todo.md`)
 - **Error envelope:** every API error follows `{ "error": { "code": "…", "message": "…" } }`
 - **Entry point:** `cmd/server/main.go`; Echo setup and routes live in `internal/server/`
 

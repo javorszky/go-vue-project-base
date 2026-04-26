@@ -4,7 +4,7 @@
 
 - **HTTP framework**: [labstack/echo](https://echo.labstack.com/)
 - **Logging**: `log/slog` (standard library)
-- **Observability**: OpenTelemetry — traces, metrics, and logs (via the Go OTel SDK)
+- **Observability**: `log/slog` structured logging today — TODO: add OpenTelemetry traces and metrics (see `otel_todo.md`)
 
 ## Common commands
 
@@ -36,6 +36,12 @@ Every API response must include these headers, applied globally via an Echo midd
 | `Cache-Control` | `no-store` (for authenticated/sensitive endpoints) |
 
 CORS headers (`Access-Control-Allow-Origin`, etc.) are also set here — allow only the known frontend origin, never `*` in production.
+
+## HTTP handler conventions
+
+- All HTTP handlers live in a `handler` package.
+- One file per resource, named after the resource (e.g., `posts.go`, `comments.go`).
+- All handlers for a given resource (GET, POST, PUT, DELETE, etc.) go in that resource's file. Do not split them across files.
 
 ## Coding style and engineering choices
 

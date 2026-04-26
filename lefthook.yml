@@ -34,11 +34,6 @@ pre-commit:
       glob: "frontend/**"
       run: npm run format:check
 
-    frontend-typecheck:
-      root: frontend/
-      glob: "frontend/**"
-      run: npm run typecheck
-
     shell-lint:
       glob: "**/*.sh"
       run: shellcheck {staged_files}
@@ -48,6 +43,11 @@ pre-push:
   commands:
     go-test:
       run: go test -race ./...
+
+    frontend-typecheck:
+      root: frontend/
+      glob: "frontend/**"
+      run: npm run typecheck
 
     frontend-test:
       root: frontend/

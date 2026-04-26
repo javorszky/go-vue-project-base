@@ -4,6 +4,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -13,24 +14,45 @@ import (
 	"github.com/your-org/your-project/internal/config"
 )
 
-// BuildInfo holds compile-time metadata injected via -ldflags.
-type BuildInfo struct {
-	GitSHA    string
-	BuildTime string
-}
-
-// Server wraps the Echo instance and its configuration.
+// Server wraps the Echo instance and the address it will listen on.
 type Server struct {
 	echo *echo.Echo
-	cfg  config.Config
+	addr string
 }
 
 // New creates and configures a Server.
-func New(cfg config.Config, info BuildInfo) *Server {
+func New(cfg config.Config, gitSHA, buildTime string) *Server {
 	e := echo.New()
 
 	e.Use(middleware.Recover())
-	e.Use(middleware.RequestLogger())
+	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogMethod:   true,
+		LogURI:      true,
+		LogStatus:   true,
+		LogLatency:  true,
+		HandleError: true,
+		LogValuesFunc: func(c *echo.Context, v middleware.RequestLoggerValues) error {
+			if v.Error == nil {
+				slog.LogAttrs((*c).Request().Context(), slog.LevelInfo, "request",
+					slog.String("method", v.Method),
+					slog.String("uri", v.URI),
+					slog.Int("status", v.Status),
+					slog.Duration("latency", v.Latency),
+				)
+			} else {
+				slog.LogAttrs((*c).Request().Context(), slog.LevelError, "request",
+					slog.String("method", v.Method),
+					slog.String("uri", v.URI),
+					slog.Int("status", v.Status),
+					slog.Duration("latency", v.Latency),
+					slog.String("error", v.Error.Error()),
+				)
+			}
+			return nil
+		},
+	}))
+
+	e.Use(middleware.BodyLimit(10 * 1024 * 1024))
 
 	// CORS is only needed in decoupled deployments where the frontend and
 	// backend run on different origins. In embedded mode they share an origin
@@ -41,18 +63,23 @@ func New(cfg config.Config, info BuildInfo) *Server {
 
 	v1 := e.Group("/api/v1")
 	v1.GET("/health", healthHandler)
-	v1.GET("/status", statusHandler(info))
+	v1.GET("/status", statusHandler(gitSHA, buildTime))
 
 	registerStatic(e)
 
-	return &Server{echo: e, cfg: cfg}
+	return &Server{echo: e, addr: fmt.Sprintf(":%d", cfg.Port)}
 }
 
 // Start runs the server until ctx is cancelled, then shuts down gracefully.
 func (s *Server) Start(ctx context.Context) error {
 	sc := echo.StartConfig{
-		Address:         fmt.Sprintf(":%d", s.cfg.Port),
+		Address:         s.addr,
 		GracefulTimeout: 10 * time.Second,
+		BeforeServeFunc: func(srv *http.Server) error {
+			srv.ReadHeaderTimeout = 5 * time.Second
+			srv.ReadTimeout = 30 * time.Second
+			return nil
+		},
 	}
 	if err := sc.Start(ctx, s.echo); err != nil {
 		return fmt.Errorf("start server: %w", err)
@@ -66,6 +93,10 @@ func (s *Server) Handler() http.Handler {
 	return s.echo
 }
 
+// healthHandler is a liveness probe: it returns 200 as long as the process
+// responds. It does not check dependencies. When the first backing service
+// lands, split into /livez (always 200) and /readyz (checks deps) and
+// deprecate this endpoint.
 func healthHandler(c *echo.Context) error {
 	if err := c.JSON(http.StatusOK, map[string]string{"status": "ok"}); err != nil {
 		return fmt.Errorf("write response: %w", err)

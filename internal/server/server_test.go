@@ -18,7 +18,7 @@ func newHandler(frontendOrigin string) http.Handler {
 		Domain:         "localhost",
 		Port:           8080,
 		FrontendOrigin: frontendOrigin,
-	}, server.BuildInfo{}).Handler()
+	}, "", "").Handler()
 }
 
 func TestHealthEndpoint(t *testing.T) {
@@ -74,11 +74,10 @@ func TestStatusEndpoint(t *testing.T) {
 }
 
 func TestStatusEndpoint_body(t *testing.T) {
-	info := server.BuildInfo{GitSHA: "abc123", BuildTime: "2026-04-25T12:00:00Z"}
 	h := server.New(config.Config{
 		Domain: "localhost",
 		Port:   8080,
-	}, info).Handler()
+	}, "abc123", "2026-04-25T12:00:00Z").Handler()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/status", http.NoBody)
 	rec := httptest.NewRecorder()
@@ -128,6 +127,39 @@ func TestCORSHeaders(t *testing.T) {
 			newHandler(tc.frontendOrigin).ServeHTTP(rec, req)
 
 			assert.Equal(t, tc.wantHeader, rec.Header().Get("Access-Control-Allow-Origin"))
+		})
+	}
+}
+
+func TestStaticSPASkipper(t *testing.T) {
+	tests := []struct {
+		name            string
+		path            string
+		wantContentType string
+		wantStatus      int
+	}{
+		{
+			name:            "unknown API path returns 404 JSON, not SPA",
+			path:            "/api/v1/nonexistent",
+			wantStatus:      http.StatusNotFound,
+			wantContentType: "application/json",
+		},
+		{
+			name:            "unknown frontend path returns SPA index",
+			path:            "/some-spa-route",
+			wantStatus:      http.StatusOK,
+			wantContentType: "text/html",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.path, http.NoBody)
+			rec := httptest.NewRecorder()
+			newHandler("").ServeHTTP(rec, req)
+
+			assert.Equal(t, tc.wantStatus, rec.Code)
+			assert.Contains(t, rec.Header().Get("Content-Type"), tc.wantContentType)
 		})
 	}
 }

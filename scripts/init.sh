@@ -37,7 +37,15 @@ read -rp "Looks good? [y/N] " CONFIRM
 
 # ── Replacements ─────────────────────────────────────────────────────────────
 sedi "s|github.com/your-org/your-project|${MODULE}|g" go.mod CLAUDE.md
+
+# .golangci.yml gci import-grouping prefix must match the module path.
+sedi "s|github.com/your-org/your-project|${MODULE}|g" .golangci.yml
+
 sedi "s|your-project-frontend|${PROJECT_NAME}-frontend|g" frontend/package.json
+
+# Project name in non-Go files.
+sedi "s|your-project API|${PROJECT_NAME} API|g" api/openapi.yaml
+sedi "s|your-project|${PROJECT_NAME}|g" README.md frontend/index.html frontend/src/App.vue
 
 # Replace the module path in every Go source file.
 while IFS= read -r -d '' f; do
