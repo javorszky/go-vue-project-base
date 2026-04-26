@@ -20,22 +20,22 @@ func TestLoadFrom(t *testing.T) {
 		{
 			name: "defaults when map is empty",
 			vars: map[string]string{},
-			want: config.Config{Domain: "localhost", Port: 8080, ServiceName: "hoplink", OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
+			want: config.Config{Domain: "localhost", Port: 8080, ServiceName: "hoplink", OTelTransport: "grpc", OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
 		},
 		{
 			name: "custom PORT",
 			vars: map[string]string{"PORT": "9090"},
-			want: config.Config{Domain: "localhost", Port: 9090, ServiceName: "hoplink", OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
+			want: config.Config{Domain: "localhost", Port: 9090, ServiceName: "hoplink", OTelTransport: "grpc", OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
 		},
 		{
 			name: "custom DOMAIN",
 			vars: map[string]string{"DOMAIN": "example.com"},
-			want: config.Config{Domain: "example.com", Port: 8080, ServiceName: "hoplink", OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
+			want: config.Config{Domain: "example.com", Port: 8080, ServiceName: "hoplink", OTelTransport: "grpc", OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
 		},
 		{
 			name: "custom FRONTEND_ORIGIN",
 			vars: map[string]string{"FRONTEND_ORIGIN": "https://frontend.example.com"},
-			want: config.Config{Domain: "localhost", FrontendOrigin: "https://frontend.example.com", Port: 8080, ServiceName: "hoplink", OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
+			want: config.Config{Domain: "localhost", FrontendOrigin: "https://frontend.example.com", Port: 8080, ServiceName: "hoplink", OTelTransport: "grpc", OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
 		},
 		{
 			name: "all custom values",
@@ -44,7 +44,7 @@ func TestLoadFrom(t *testing.T) {
 				"DOMAIN":          "api.example.com",
 				"FRONTEND_ORIGIN": "https://app.example.com",
 			},
-			want: config.Config{Domain: "api.example.com", FrontendOrigin: "https://app.example.com", Port: 3000, ServiceName: "hoplink", OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
+			want: config.Config{Domain: "api.example.com", FrontendOrigin: "https://app.example.com", Port: 3000, ServiceName: "hoplink", OTelTransport: "grpc", OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
 		},
 		{
 			name: "custom OTel endpoint and service name",
@@ -52,7 +52,7 @@ func TestLoadFrom(t *testing.T) {
 				"OTEL_EXPORTER_OTLP_ENDPOINT": "collector:4317",
 				"OTEL_SERVICE_NAME":           "my-svc",
 			},
-			want: config.Config{Domain: "localhost", Port: 8080, OTelEndpoint: "collector:4317", ServiceName: "my-svc", OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
+			want: config.Config{Domain: "localhost", Port: 8080, OTelEndpoint: "collector:4317", OTelTransport: "grpc", ServiceName: "my-svc", OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
 		},
 		{
 			name: "custom OTel sampling ratio and export interval",
@@ -60,7 +60,12 @@ func TestLoadFrom(t *testing.T) {
 				"OTEL_SAMPLING_RATIO":         "0.25",
 				"OTEL_METRIC_EXPORT_INTERVAL": "30s",
 			},
-			want: config.Config{Domain: "localhost", Port: 8080, ServiceName: "hoplink", OTelSamplingRatio: 0.25, OTelExportInterval: 30 * time.Second},
+			want: config.Config{Domain: "localhost", Port: 8080, ServiceName: "hoplink", OTelTransport: "grpc", OTelSamplingRatio: 0.25, OTelExportInterval: 30 * time.Second},
+		},
+		{
+			name: "http transport",
+			vars: map[string]string{"OTEL_EXPORTER_OTLP_PROTOCOL": "http"},
+			want: config.Config{Domain: "localhost", Port: 8080, ServiceName: "hoplink", OTelTransport: "http", OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
 		},
 		{
 			name:    "invalid PORT returns error",
@@ -100,6 +105,11 @@ func TestLoadFrom(t *testing.T) {
 		{
 			name:    "negative export interval is invalid",
 			vars:    map[string]string{"OTEL_METRIC_EXPORT_INTERVAL": "-1s"},
+			wantErr: true,
+		},
+		{
+			name:    "invalid transport is invalid",
+			vars:    map[string]string{"OTEL_EXPORTER_OTLP_PROTOCOL": "udp"},
 			wantErr: true,
 		},
 	}

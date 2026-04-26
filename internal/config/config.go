@@ -16,6 +16,7 @@ type Config struct {
 	Domain             string        `env:"DOMAIN"                        envDefault:"localhost"`
 	FrontendOrigin     string        `env:"FRONTEND_ORIGIN"`
 	OTelEndpoint       string        `env:"OTEL_EXPORTER_OTLP_ENDPOINT"`
+	OTelTransport      string        `env:"OTEL_EXPORTER_OTLP_PROTOCOL"   envDefault:"grpc"`
 	ServiceName        string        `env:"OTEL_SERVICE_NAME"             envDefault:"hoplink"`
 	OTelExportInterval time.Duration `env:"OTEL_METRIC_EXPORT_INTERVAL"   envDefault:"15s"`
 	OTelSamplingRatio  float64       `env:"OTEL_SAMPLING_RATIO"           envDefault:"1.0"`
@@ -43,6 +44,9 @@ func (c Config) validate() error {
 	}
 	if c.OTelExportInterval <= 0 {
 		return fmt.Errorf("config: OTEL_METRIC_EXPORT_INTERVAL must be positive, got %s", c.OTelExportInterval)
+	}
+	if c.OTelTransport != "grpc" && c.OTelTransport != "http" {
+		return fmt.Errorf("config: OTEL_EXPORTER_OTLP_PROTOCOL must be 'grpc' or 'http', got %q", c.OTelTransport)
 	}
 	return nil
 }

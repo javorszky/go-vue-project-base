@@ -16,9 +16,10 @@ shifts. Do not let it drift from the actual code.
 | `main` | `func main()` | Calls `run()`; exits non-zero on error |
 | `run` | `func run() error` | Loads config, sets up OTel, wires signal context, starts server |
 | `setupOTel` | `func setupOTel(ctx context.Context, cfg config.Config) (func(), error)` | Initialises trace/metric/log providers, registers globals, bridges slog; returns flush-shutdown func |
-| `buildTracerProvider` | `func buildTracerProvider(ctx, cfg, res) (*sdktrace.TracerProvider, error)` | Stdout exporter when no endpoint; OTLP gRPC otherwise |
-| `buildMeterProvider` | `func buildMeterProvider(ctx, cfg, res) (*sdkmetric.MeterProvider, error)` | Same dev/prod branching for metrics |
-| `buildLoggerProvider` | `func buildLoggerProvider(ctx, cfg, res) (*sdklog.LoggerProvider, error)` | Same dev/prod branching for logs |
+| `buildTracerProvider` | `func buildTracerProvider(ctx, cfg, res) (*sdktrace.TracerProvider, error)` | Stdout (dev), OTLP gRPC, or OTLP HTTP exporter based on cfg |
+| `buildMeterProvider` | `func buildMeterProvider(ctx, cfg, res) (*sdkmetric.MeterProvider, error)` | Same dev/grpc/http branching for metrics |
+| `buildLoggerProvider` | `func buildLoggerProvider(ctx, cfg, res) (*sdklog.LoggerProvider, error)` | Same dev/grpc/http branching for logs |
+| `checkOTelConnectivity` | `func checkOTelConnectivity(endpoint, transport string) error` | TCP probe for gRPC; HTTP HEAD /v1/traces for HTTP transport |
 
 **To change:** startup/shutdown sequence → `run()`. OTel provider config → `otel.go`. Process exit code → `main()`.
 
@@ -29,11 +30,11 @@ shifts. Do not let it drift from the actual code.
 
 | Symbol | Signature | Purpose |
 |--------|-----------|---------|
-| `Config` | `struct{ Domain string; FrontendOrigin string; OTelEndpoint string; ServiceName string; OTelExportInterval time.Duration; OTelSamplingRatio float64; Port int }` | All runtime config; parsed from env vars |
+| `Config` | `struct{ Domain string; FrontendOrigin string; OTelEndpoint string; OTelTransport string; ServiceName string; OTelExportInterval time.Duration; OTelSamplingRatio float64; Port int }` | All runtime config; parsed from env vars |
 | `Load` | `func Load() (Config, error)` | Parses OS environment; call once at startup |
 | `LoadFrom` | `func LoadFrom(vars map[string]string) (Config, error)` | Parses from an in-memory map; use in tests instead of `os.Setenv` |
 
-Env vars: `PORT` (default `8080`), `DOMAIN` (default `localhost`), `FRONTEND_ORIGIN` (optional), `OTEL_EXPORTER_OTLP_ENDPOINT` (empty → stdout exporters), `OTEL_SERVICE_NAME` (default `hoplink`), `OTEL_SAMPLING_RATIO` (float 0–1, default `1.0`), `OTEL_METRIC_EXPORT_INTERVAL` (Go duration, default `15s`).
+Env vars: `PORT` (default `8080`), `DOMAIN` (default `localhost`), `FRONTEND_ORIGIN` (optional), `OTEL_EXPORTER_OTLP_ENDPOINT` (empty → stdout exporters), `OTEL_EXPORTER_OTLP_PROTOCOL` (`grpc` or `http`, default `grpc`), `OTEL_SERVICE_NAME` (default `hoplink`), `OTEL_SAMPLING_RATIO` (float 0–1, default `1.0`), `OTEL_METRIC_EXPORT_INTERVAL` (Go duration, default `15s`).
 
 **To change:** add/remove a config variable → `Config` struct + this table.  
 **Rule:** never call `os.Getenv` outside this package (enforced by golangci-lint `forbidigo`).

@@ -5,14 +5,19 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
+	"net/http"
 	"os"
 	"time"
 
 	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutlog"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
@@ -27,7 +32,11 @@ import (
 	"github.com/your-org/your-project/internal/config"
 )
 
-const otelShutdownTimeout = 10 * time.Second
+const (
+	otelShutdownTimeout = 10 * time.Second
+	otelConnectTimeout  = 5 * time.Second
+	otelTransportHTTP   = "http"
+)
 
 // setupOTel initialises the three OTel signal providers (trace, metric, log),
 // registers them as globals, and bridges the global slog logger into the OTel
@@ -51,6 +60,12 @@ func setupOTel(ctx context.Context, cfg config.Config) (func(), error) {
 		propagation.Baggage{},
 	))
 
+	if cfg.OTelEndpoint != "" {
+		if connectErr := checkOTelConnectivity(cfg.OTelEndpoint, cfg.OTelTransport); connectErr != nil {
+			return nil, connectErr
+		}
+	}
+
 	tp, err := buildTracerProvider(ctx, cfg, res)
 	if err != nil {
 		return nil, fmt.Errorf("build tracer provider: %w", err)
@@ -70,25 +85,8 @@ func setupOTel(ctx context.Context, cfg config.Config) (func(), error) {
 	otel.SetMeterProvider(mp)
 	logGlobal.SetLoggerProvider(lp)
 
-	// Must not use slog.Default().Handler() (defaultHandler) here: slog.SetDefault
-	// installs multiHandler as log.Default()'s writer via handlerWriter, so
-	// defaultHandler → log.Default().output (acquires mu) → handlerWriter.Write →
-	// multiHandler → defaultHandler → re-acquire mu → self-deadlock on same goroutine.
-	// JSONHandler writes directly to os.Stderr and never touches log.Default().
-	stderrHandler := slog.NewJSONHandler(os.Stderr, nil)
-	stderrLogger := slog.New(stderrHandler)
-
 	otelHandler := otelslog.NewHandler(cfg.ServiceName)
-	var handler slog.Handler
-	if cfg.OTelEndpoint != "" {
-		// Prod: fan-out to stderr AND the OTel bridge. asyncHandler wraps the
-		// bridge so a slow or unreachable collector cannot block the request path.
-		handler = newMultiHandler(stderrHandler, newAsyncHandler(otelHandler))
-	} else {
-		// Dev: OTel bridge only — the stdoutlog exporter writes to stdout and
-		// is always available, so no fallback is needed.
-		handler = otelHandler
-	}
+	handler, stderrLogger := buildSlogHandler(cfg.OTelEndpoint, otelHandler)
 	slog.SetDefault(slog.New(handler))
 
 	return func() {
@@ -106,12 +104,74 @@ func setupOTel(ctx context.Context, cfg config.Config) (func(), error) {
 	}, nil
 }
 
+// buildSlogHandler returns the slog handler to install as the global default and
+// a stderr-backed fallback logger for use after the OTel log provider shuts down.
+//
+// Must not use slog.Default().Handler() (defaultHandler) as the stderr fallback:
+// slog.SetDefault installs the returned handler as log.Default()'s writer via
+// handlerWriter, so defaultHandler → log.Default().output (acquires mu) →
+// handlerWriter.Write → this handler → defaultHandler → re-acquire mu →
+// self-deadlock on the same goroutine. JSONHandler writes to os.Stderr directly.
+func buildSlogHandler(endpoint string, otelHandler slog.Handler) (slog.Handler, *slog.Logger) {
+	stderrHandler := slog.NewJSONHandler(os.Stderr, nil)
+	if endpoint != "" {
+		// Prod: fan-out to stderr AND the OTel bridge. asyncHandler wraps the
+		// bridge so a slow or unreachable collector cannot block the request path.
+		return newMultiHandler(stderrHandler, newAsyncHandler(otelHandler)), slog.New(stderrHandler)
+	}
+	// Dev: OTel bridge only — the stdoutlog exporter writes to stdout and
+	// is always available, so no fallback is needed.
+	return otelHandler, slog.New(stderrHandler)
+}
+
+// checkOTelConnectivity verifies the OTLP endpoint is reachable before the
+// server starts. The probe is transport-specific:
+//   - grpc: TCP dial only — gRPC uses HTTP/2 framing over TCP, so a successful
+//     TCP connection confirms the port is open. A non-gRPC service on the same
+//     port would pass this check, but that misconfiguration surfaces quickly
+//     when the first export attempt fails.
+//   - http: HTTP HEAD to /v1/traces — confirms an HTTP server is listening and
+//     responding, not just that the port is open.
+func checkOTelConnectivity(endpoint, transport string) error {
+	if transport == otelTransportHTTP {
+		return checkOTelHTTP(endpoint)
+	}
+	return checkOTelTCP(endpoint)
+}
+
+func checkOTelTCP(endpoint string) error {
+	conn, err := net.DialTimeout("tcp", endpoint, otelConnectTimeout)
+	if err != nil {
+		return fmt.Errorf("otel endpoint %q unreachable: %w", endpoint, err)
+	}
+	if err := conn.Close(); err != nil {
+		return fmt.Errorf("close otel probe connection: %w", err)
+	}
+	return nil
+}
+
+func checkOTelHTTP(endpoint string) error {
+	client := &http.Client{Timeout: otelConnectTimeout}
+	resp, err := client.Head("http://" + endpoint + "/v1/traces")
+	if err != nil {
+		return fmt.Errorf("otel http endpoint %q unreachable: %w", endpoint, err)
+	}
+	_ = resp.Body.Close()
+	return nil
+}
+
 func buildTracerProvider(ctx context.Context, cfg config.Config, res *sdkresource.Resource) (*sdktrace.TracerProvider, error) {
 	var exporter sdktrace.SpanExporter
 	var err error
-	if cfg.OTelEndpoint == "" {
+	switch {
+	case cfg.OTelEndpoint == "":
 		exporter, err = stdouttrace.New(stdouttrace.WithPrettyPrint())
-	} else {
+	case cfg.OTelTransport == otelTransportHTTP:
+		exporter, err = otlptracehttp.New(ctx,
+			otlptracehttp.WithEndpoint(cfg.OTelEndpoint),
+			otlptracehttp.WithInsecure(),
+		)
+	default:
 		exporter, err = otlptracegrpc.New(ctx,
 			otlptracegrpc.WithEndpoint(cfg.OTelEndpoint),
 			otlptracegrpc.WithInsecure(),
@@ -129,13 +189,23 @@ func buildTracerProvider(ctx context.Context, cfg config.Config, res *sdkresourc
 
 func buildMeterProvider(ctx context.Context, cfg config.Config, res *sdkresource.Resource) (*sdkmetric.MeterProvider, error) {
 	var reader sdkmetric.Reader
-	if cfg.OTelEndpoint == "" {
+	switch {
+	case cfg.OTelEndpoint == "":
 		exporter, err := stdoutmetric.New(stdoutmetric.WithPrettyPrint())
 		if err != nil {
 			return nil, fmt.Errorf("create stdout metric exporter: %w", err)
 		}
 		reader = sdkmetric.NewPeriodicReader(exporter, sdkmetric.WithInterval(cfg.OTelExportInterval))
-	} else {
+	case cfg.OTelTransport == otelTransportHTTP:
+		exporter, err := otlpmetrichttp.New(ctx,
+			otlpmetrichttp.WithEndpoint(cfg.OTelEndpoint),
+			otlpmetrichttp.WithInsecure(),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("create otlp metric exporter: %w", err)
+		}
+		reader = sdkmetric.NewPeriodicReader(exporter, sdkmetric.WithInterval(cfg.OTelExportInterval))
+	default:
 		exporter, err := otlpmetricgrpc.New(ctx,
 			otlpmetricgrpc.WithEndpoint(cfg.OTelEndpoint),
 			otlpmetricgrpc.WithInsecure(),
@@ -248,9 +318,15 @@ func (m multiHandler) WithGroup(name string) slog.Handler {
 func buildLoggerProvider(ctx context.Context, cfg config.Config, res *sdkresource.Resource) (*sdklog.LoggerProvider, error) {
 	var exporter sdklog.Exporter
 	var err error
-	if cfg.OTelEndpoint == "" {
+	switch {
+	case cfg.OTelEndpoint == "":
 		exporter, err = stdoutlog.New()
-	} else {
+	case cfg.OTelTransport == otelTransportHTTP:
+		exporter, err = otlploghttp.New(ctx,
+			otlploghttp.WithEndpoint(cfg.OTelEndpoint),
+			otlploghttp.WithInsecure(),
+		)
+	default:
 		exporter, err = otlploggrpc.New(ctx,
 			otlploggrpc.WithEndpoint(cfg.OTelEndpoint),
 			otlploggrpc.WithInsecure(),
