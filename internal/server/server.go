@@ -13,20 +13,14 @@ import (
 	"github.com/your-org/your-project/internal/config"
 )
 
-// BuildInfo holds compile-time metadata injected via -ldflags.
-type BuildInfo struct {
-	GitSHA    string
-	BuildTime string
-}
-
-// Server wraps the Echo instance and its configuration.
+// Server wraps the Echo instance and the address it will listen on.
 type Server struct {
 	echo *echo.Echo
-	cfg  config.Config
+	addr string
 }
 
 // New creates and configures a Server.
-func New(cfg config.Config, info BuildInfo) *Server {
+func New(cfg config.Config, gitSHA, buildTime string) *Server {
 	e := echo.New()
 
 	e.Use(middleware.Recover())
@@ -41,17 +35,17 @@ func New(cfg config.Config, info BuildInfo) *Server {
 
 	v1 := e.Group("/api/v1")
 	v1.GET("/health", healthHandler)
-	v1.GET("/status", statusHandler(info))
+	v1.GET("/status", statusHandler(gitSHA, buildTime))
 
 	registerStatic(e)
 
-	return &Server{echo: e, cfg: cfg}
+	return &Server{echo: e, addr: fmt.Sprintf(":%d", cfg.Port)}
 }
 
 // Start runs the server until ctx is cancelled, then shuts down gracefully.
 func (s *Server) Start(ctx context.Context) error {
 	sc := echo.StartConfig{
-		Address:         fmt.Sprintf(":%d", s.cfg.Port),
+		Address:         s.addr,
 		GracefulTimeout: 10 * time.Second,
 	}
 	if err := sc.Start(ctx, s.echo); err != nil {

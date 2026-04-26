@@ -13,11 +13,11 @@ type statusResponse struct {
 	BuildTime string `json:"build_time"`
 }
 
-func statusHandler(info BuildInfo) echo.HandlerFunc {
+func statusHandler(gitSHA, buildTime string) echo.HandlerFunc {
 	resp := statusResponse{
 		Status:    "ok",
-		GitSHA:    info.GitSHA,
-		BuildTime: info.BuildTime,
+		GitSHA:    gitSHA,
+		BuildTime: buildTime,
 	}
 	return func(c *echo.Context) error {
 		if err := c.JSON(http.StatusOK, resp); err != nil {

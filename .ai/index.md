@@ -41,13 +41,12 @@ Env vars: `PORT` (default `8080`), `DOMAIN` (default `localhost`), `FRONTEND_ORI
 
 | Symbol | Signature | Purpose |
 |--------|-----------|---------|
-| `BuildInfo` | `struct{ GitSHA string; BuildTime string }` | Compile-time metadata injected via `-ldflags` |
-| `Server` | `struct{ echo *echo.Echo; cfg config.Config }` | Wraps Echo and its config |
-| `New` | `func New(cfg config.Config, info BuildInfo) *Server` | Creates Echo instance, registers middleware and routes |
+| `Server` | `struct{ echo *echo.Echo; addr string }` | Wraps Echo and the listen address |
+| `New` | `func New(cfg config.Config, gitSHA, buildTime string) *Server` | Creates Echo instance, registers middleware and routes |
 | `(*Server).Start` | `func (s *Server) Start(ctx context.Context) error` | Runs server until `ctx` is cancelled, then shuts down gracefully (10 s timeout) |
 | `(*Server).Handler` | `func (s *Server) Handler() http.Handler` | Returns the Echo instance as `http.Handler`; use in tests with `httptest` |
 | `healthHandler` | `func healthHandler(c *echo.Context) error` | `GET /api/v1/health` → `{"status":"ok"}` |
-| `statusHandler` | `func statusHandler(info BuildInfo) echo.HandlerFunc` | `GET /api/v1/status` → `{"status":"ok","git_sha":"…","build_time":"…"}` |
+| `statusHandler` | `func statusHandler(gitSHA, buildTime string) echo.HandlerFunc` | `GET /api/v1/status` → `{"status":"ok","git_sha":"…","build_time":"…"}` |
 | `registerStatic` | `func registerStatic(e *echo.Echo)` | Serves embedded Vue SPA (Mode 1 only; delete this file to move to Mode 2) |
 
 **To add a route:** `New()` in `server.go`.  

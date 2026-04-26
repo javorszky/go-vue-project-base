@@ -18,7 +18,7 @@ func newHandler(frontendOrigin string) http.Handler {
 		Domain:         "localhost",
 		Port:           8080,
 		FrontendOrigin: frontendOrigin,
-	}, server.BuildInfo{}).Handler()
+	}, "", "").Handler()
 }
 
 func TestHealthEndpoint(t *testing.T) {
@@ -74,11 +74,10 @@ func TestStatusEndpoint(t *testing.T) {
 }
 
 func TestStatusEndpoint_body(t *testing.T) {
-	info := server.BuildInfo{GitSHA: "abc123", BuildTime: "2026-04-25T12:00:00Z"}
 	h := server.New(config.Config{
 		Domain: "localhost",
 		Port:   8080,
-	}, info).Handler()
+	}, "abc123", "2026-04-25T12:00:00Z").Handler()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/status", http.NoBody)
 	rec := httptest.NewRecorder()
