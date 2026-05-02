@@ -3,7 +3,7 @@ module github.com/your-org/your-project
 go 1.26.2
 
 require (
-	github.com/caarlos0/env/v11 v11.4.0
+	github.com/caarlos0/env/v11 v11.4.1
 	github.com/labstack/echo/v5 v5.1.0
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/contrib/bridges/otelslog v0.18.0
