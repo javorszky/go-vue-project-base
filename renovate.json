@@ -5,6 +5,9 @@
     "helpers:pinGitHubActionDigests"
   ],
   "stabilityDays": 0,
+  "automerge": true,
+  "automergeType": "pr",
+  "platformAutomerge": true,
   "packageRules": [
     {
       "matchManagers": ["gomod", "npm", "github-actions"],
