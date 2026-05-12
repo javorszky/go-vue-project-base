@@ -17,7 +17,7 @@ type Config struct {
 	FrontendOrigin     string        `env:"FRONTEND_ORIGIN"`
 	OTelEndpoint       string        `env:"OTEL_EXPORTER_OTLP_ENDPOINT"`
 	OTelTransport      string        `env:"OTEL_EXPORTER_OTLP_PROTOCOL"   envDefault:"grpc"`
-	ServiceName        string        `env:"OTEL_SERVICE_NAME"             envDefault:"hoplink"`
+	ServiceName        string        `env:"OTEL_SERVICE_NAME"             envDefault:"your-project"`
 	OTelExportInterval time.Duration `env:"OTEL_METRIC_EXPORT_INTERVAL"   envDefault:"15s"`
 	OTelSamplingRatio  float64       `env:"OTEL_SAMPLING_RATIO"           envDefault:"1.0"`
 	Port               int           `env:"PORT"                          envDefault:"8080"`

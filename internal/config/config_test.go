@@ -11,10 +11,11 @@ import (
 )
 
 const (
-	defaultTransport  = "grpc"
-	envPort           = "PORT"
-	envSamplingRatio  = "OTEL_SAMPLING_RATIO"
-	envExportInterval = "OTEL_METRIC_EXPORT_INTERVAL"
+	defaultServiceName = "your-project"
+	defaultTransport   = "grpc"
+	envPort            = "PORT"
+	envSamplingRatio   = "OTEL_SAMPLING_RATIO"
+	envExportInterval  = "OTEL_METRIC_EXPORT_INTERVAL"
 )
 
 func TestLoadFrom(t *testing.T) {
@@ -27,22 +28,22 @@ func TestLoadFrom(t *testing.T) {
 		{
 			name: "defaults when map is empty",
 			vars: map[string]string{},
-			want: config.Config{Domain: "localhost", Port: 8080, ServiceName: "hoplink", OTelTransport: defaultTransport, OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
+			want: config.Config{Domain: "localhost", Port: 8080, ServiceName: defaultServiceName, OTelTransport: defaultTransport, OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
 		},
 		{
 			name: "custom PORT",
 			vars: map[string]string{envPort: "9090"},
-			want: config.Config{Domain: "localhost", Port: 9090, ServiceName: "hoplink", OTelTransport: defaultTransport, OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
+			want: config.Config{Domain: "localhost", Port: 9090, ServiceName: defaultServiceName, OTelTransport: defaultTransport, OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
 		},
 		{
 			name: "custom DOMAIN",
 			vars: map[string]string{"DOMAIN": "example.com"},
-			want: config.Config{Domain: "example.com", Port: 8080, ServiceName: "hoplink", OTelTransport: defaultTransport, OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
+			want: config.Config{Domain: "example.com", Port: 8080, ServiceName: defaultServiceName, OTelTransport: defaultTransport, OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
 		},
 		{
 			name: "custom FRONTEND_ORIGIN",
 			vars: map[string]string{"FRONTEND_ORIGIN": "https://frontend.example.com"},
-			want: config.Config{Domain: "localhost", FrontendOrigin: "https://frontend.example.com", Port: 8080, ServiceName: "hoplink", OTelTransport: defaultTransport, OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
+			want: config.Config{Domain: "localhost", FrontendOrigin: "https://frontend.example.com", Port: 8080, ServiceName: defaultServiceName, OTelTransport: defaultTransport, OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
 		},
 		{
 			name: "all custom values",
@@ -51,7 +52,7 @@ func TestLoadFrom(t *testing.T) {
 				"DOMAIN":          "api.example.com",
 				"FRONTEND_ORIGIN": "https://app.example.com",
 			},
-			want: config.Config{Domain: "api.example.com", FrontendOrigin: "https://app.example.com", Port: 3000, ServiceName: "hoplink", OTelTransport: defaultTransport, OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
+			want: config.Config{Domain: "api.example.com", FrontendOrigin: "https://app.example.com", Port: 3000, ServiceName: defaultServiceName, OTelTransport: defaultTransport, OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
 		},
 		{
 			name: "custom OTel endpoint and service name",
@@ -67,12 +68,12 @@ func TestLoadFrom(t *testing.T) {
 				envSamplingRatio:  "0.25",
 				envExportInterval: "30s",
 			},
-			want: config.Config{Domain: "localhost", Port: 8080, ServiceName: "hoplink", OTelTransport: defaultTransport, OTelSamplingRatio: 0.25, OTelExportInterval: 30 * time.Second},
+			want: config.Config{Domain: "localhost", Port: 8080, ServiceName: defaultServiceName, OTelTransport: defaultTransport, OTelSamplingRatio: 0.25, OTelExportInterval: 30 * time.Second},
 		},
 		{
 			name: "http transport",
 			vars: map[string]string{"OTEL_EXPORTER_OTLP_PROTOCOL": "http"},
-			want: config.Config{Domain: "localhost", Port: 8080, ServiceName: "hoplink", OTelTransport: "http", OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
+			want: config.Config{Domain: "localhost", Port: 8080, ServiceName: defaultServiceName, OTelTransport: "http", OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
 		},
 		{
 			name:    "invalid PORT returns error",
