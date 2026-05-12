@@ -52,6 +52,10 @@ while IFS= read -r -d '' f; do
   sedi "s|github.com/your-org/your-project|${MODULE}|g" "$f"
 done < <(find . -type f -name '*.go' -print0)
 
+# Replace the OTel service-name default (runs after module-path replacement so
+# the broader s|your-project| pattern doesn't accidentally touch import paths).
+sedi "s|envDefault:\"your-project\"|envDefault:\"${PROJECT_NAME}\"|g" internal/config/config.go
+
 echo ""
 echo "Done. Next steps:"
 echo "  1. cd frontend && npm install   (generates a fresh package-lock.json)"
