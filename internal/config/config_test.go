@@ -11,6 +11,7 @@ import (
 )
 
 const (
+	defaultDomain      = "localhost"
 	defaultServiceName = "your-project"
 	defaultTransport   = "grpc"
 	envPort            = "PORT"
@@ -28,12 +29,12 @@ func TestLoadFrom(t *testing.T) {
 		{
 			name: "defaults when map is empty",
 			vars: map[string]string{},
-			want: config.Config{Domain: "localhost", Port: 8080, ServiceName: defaultServiceName, OTelTransport: defaultTransport, OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
+			want: config.Config{Domain: defaultDomain, Port: 8080, ServiceName: defaultServiceName, OTelTransport: defaultTransport, OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
 		},
 		{
 			name: "custom PORT",
 			vars: map[string]string{envPort: "9090"},
-			want: config.Config{Domain: "localhost", Port: 9090, ServiceName: defaultServiceName, OTelTransport: defaultTransport, OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
+			want: config.Config{Domain: defaultDomain, Port: 9090, ServiceName: defaultServiceName, OTelTransport: defaultTransport, OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
 		},
 		{
 			name: "custom DOMAIN",
@@ -43,7 +44,7 @@ func TestLoadFrom(t *testing.T) {
 		{
 			name: "custom FRONTEND_ORIGIN",
 			vars: map[string]string{"FRONTEND_ORIGIN": "https://frontend.example.com"},
-			want: config.Config{Domain: "localhost", FrontendOrigin: "https://frontend.example.com", Port: 8080, ServiceName: defaultServiceName, OTelTransport: defaultTransport, OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
+			want: config.Config{Domain: defaultDomain, FrontendOrigin: "https://frontend.example.com", Port: 8080, ServiceName: defaultServiceName, OTelTransport: defaultTransport, OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
 		},
 		{
 			name: "all custom values",
@@ -60,7 +61,7 @@ func TestLoadFrom(t *testing.T) {
 				"OTEL_EXPORTER_OTLP_ENDPOINT": "collector:4317",
 				"OTEL_SERVICE_NAME":           "my-svc",
 			},
-			want: config.Config{Domain: "localhost", Port: 8080, OTelEndpoint: "collector:4317", OTelTransport: defaultTransport, ServiceName: "my-svc", OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
+			want: config.Config{Domain: defaultDomain, Port: 8080, OTelEndpoint: "collector:4317", OTelTransport: defaultTransport, ServiceName: "my-svc", OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
 		},
 		{
 			name: "custom OTel sampling ratio and export interval",
@@ -68,12 +69,12 @@ func TestLoadFrom(t *testing.T) {
 				envSamplingRatio:  "0.25",
 				envExportInterval: "30s",
 			},
-			want: config.Config{Domain: "localhost", Port: 8080, ServiceName: defaultServiceName, OTelTransport: defaultTransport, OTelSamplingRatio: 0.25, OTelExportInterval: 30 * time.Second},
+			want: config.Config{Domain: defaultDomain, Port: 8080, ServiceName: defaultServiceName, OTelTransport: defaultTransport, OTelSamplingRatio: 0.25, OTelExportInterval: 30 * time.Second},
 		},
 		{
 			name: "http transport",
 			vars: map[string]string{"OTEL_EXPORTER_OTLP_PROTOCOL": "http"},
-			want: config.Config{Domain: "localhost", Port: 8080, ServiceName: defaultServiceName, OTelTransport: "http", OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
+			want: config.Config{Domain: defaultDomain, Port: 8080, ServiceName: defaultServiceName, OTelTransport: "http", OTelSamplingRatio: 1.0, OTelExportInterval: 15 * time.Second},
 		},
 		{
 			name:    "invalid PORT returns error",
