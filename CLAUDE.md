@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project
 
 Module: `github.com/your-org/your-project`  
-Language: Go 1.26.2
+Language: Go 1.26.4
 
 > **New project?** Run `bash scripts/init.sh` once after cloning to replace placeholder names with your actual module path and project name.
 
