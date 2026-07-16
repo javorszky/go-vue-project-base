@@ -16,9 +16,10 @@ vendor/
 frontend/dist/
 frontend/coverage/
 
-# Go-embedded frontend build output — placeholder files are kept, built assets are not
+# Go-embedded frontend build output — only .gitkeep is tracked so the
+# `//go:embed all:dist` directive always has a directory to embed; run
+# `npm run build` in frontend/ to populate it before the binary can serve the SPA
 internal/ui/dist/*
-!internal/ui/dist/index.html
 !internal/ui/dist/.gitkeep
 frontend/.env
 frontend/.env.local
