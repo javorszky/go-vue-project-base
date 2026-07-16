@@ -27,13 +27,11 @@ coverage.out
 # Frontend: rebuilt inside Docker; local build outputs excluded
 frontend/node_modules
 frontend/coverage
-# internal/ui/dist is intentionally NOT excluded — the placeholder index.html
-# must be in the build context so //go:embed compiles when frontend-builder
-# runs first and overwrites it.
+# internal/ui/dist is intentionally NOT excluded — its .gitkeep must be in
+# the build context so //go:embed compiles; frontend-builder then overwrites
+# the directory with the real build output.
 
 # Docs and local scripts
 README.md
 CLAUDE.md
-otel_todo.md
-to_fix.md
 scripts/

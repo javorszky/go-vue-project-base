@@ -1,4 +1,4 @@
-# go-vue-template
+# go-vue-project-base
 
 A GitHub template for production-ready full-stack applications: Go backend, Vue 3 frontend, strict tooling, and a clear path from single-binary to fully decoupled deployment. It's set up to be developed on a mac locally.
 
@@ -77,6 +77,52 @@ cd frontend && npm run dev
 
 The Vite dev server proxies `/api` requests to `http://localhost:8080`, so the frontend and backend talk to each other without any CORS configuration during development.
 
+To serve the SPA from the Go binary itself (embedded mode), build the frontend first — the repo ships no build output:
+
+```bash
+cd frontend && npm run build   # writes to internal/ui/dist/
+make run                       # binary now serves the SPA at :8080
+```
+
+---
+
+## Development commands
+
+The `Makefile` is the primary dev interface:
+
+| Command | What it does |
+|---|---|
+| `make build` | Compile the server to `bin/server` with git SHA / build time stamped in |
+| `make run` | Build, then run the server on `:8080` |
+| `make test` | Go tests (`test-go`) + frontend tests (`test-fe`) |
+| `make lint` | golangci-lint, frontend typecheck/ESLint/Prettier, shellcheck |
+| `make lint-fix` | Auto-fix everything the linters can fix |
+| `make tidy` | `go mod tidy` + `go mod download` |
+| `make docker-build` / `make docker-run` | Build/run the production image from `build/Dockerfile` |
+
+Each aggregate target has per-layer variants (`test-go`, `test-fe`, `lint-go`, `lint-fe`, `lint-shell`, `fix-go`, `fix-fe`, `fix-shell`).
+
+---
+
+## Configuration
+
+All backend configuration comes from environment variables, parsed and validated at startup in `internal/config/config.go`:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `PORT` | `8080` | HTTP listen port (1–65535) |
+| `DOMAIN` | `localhost` | Public domain of the deployment |
+| `FRONTEND_ORIGIN` | *(empty)* | CORS allowlist origin. Empty in embedded mode (same origin, no CORS needed); set to the frontend's origin in decoupled mode |
+| `OTEL_SERVICE_NAME` | project name | Service name attached to all telemetry |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | *(empty)* | OTLP collector endpoint. Empty = pretty-print telemetry to stdout (dev mode) |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | `grpc` | OTLP transport: `grpc` or `http` |
+| `OTEL_METRIC_EXPORT_INTERVAL` | `15s` | Metric export period (must be positive) |
+| `OTEL_SAMPLING_RATIO` | `1.0` | Trace sampling ratio (0.0–1.0) |
+
+The OTLP exporters intentionally use plaintext (`WithInsecure`) — the expected collector is on localhost or in-cluster. For a collector across a network boundary, switch to TLS credentials in `cmd/server/otel_exporters_*.go`.
+
+The frontend reads one variable, `VITE_API_URL` (via `src/api/`): empty for same-origin (embedded mode), or the API's URL in decoupled mode.
+
 ---
 
 ## Architecture
@@ -151,7 +197,7 @@ Browser ──► Caddy DHI container (dhi.io/caddy)
                └── /*      → /srv/ (SPA fallback → index.html)
 ```
 
-The frontend image uses [Docker Hardened Images' Caddy](https://hub.docker.com/hardened-images/catalog/dhi/caddy) (Debian 13, zero-known CVEs). Create `deploy/Caddyfile` (template in `.ai/architecture/deployment.md`) to handle:
+The frontend image uses [Docker Hardened Images' Caddy](https://hub.docker.com/hardened-images/catalog/dhi/caddy) (Debian 13, zero-known CVEs). The provided `deploy/Caddyfile` handles:
 - SPA fallback routing (`try_files {path} /index.html`)
 - API reverse proxy (`/api/*` → Go backend, internal network)
 - Slowloris mitigation (read header/body timeouts)
@@ -203,8 +249,9 @@ Two workflow files with a deliberate conceptual split:
 - `frontend-test`: Vitest with coverage artifact
 
 **`security.yml` — safety** (runs on push, PR, and weekly schedule):
-- `trivy`: filesystem scan, SARIF upload to code scanning
+- `trivy`: filesystem scan — all severities reported to code scanning, job fails on fixable critical/high findings
 - `govulncheck`: reachability-aware Go CVE scan
+- `dependency-review`: blocks PRs that introduce high-severity dependency CVEs
 - `zizmor`: workflow file security audit, SARIF upload
 
 **`codeql.yml` — semantic analysis** (runs on push, PR, and merge queue):
@@ -290,17 +337,13 @@ Activate once after cloning with `lefthook install`.
 
 This repository is set up for productive AI-assisted development with [Claude Code](https://claude.ai/code).
 
-The `.ai/` directory contains context documents loaded on demand. Populated so far:
+The `.ai/` directory contains context documents loaded on demand (routing lives in `CLAUDE.md`):
 
 | File | Content |
 |---|---|
+| `.ai/index.md` | Package-by-package codebase map: every symbol, signature, and purpose |
 | `.ai/architecture/overview.md` | API contract, decoupling rules, CORS policy |
 | `.ai/architecture/deployment.md` | Both deployment modes, Caddyfile, migration playbook |
-
-Add these as the project grows (referenced in `CLAUDE.md` domain guidelines):
-
-| File | Intended content |
-|---|---|
 | `.ai/backend/guidelines.md` | Go coding style, Echo patterns, OTel conventions |
 | `.ai/frontend/guidelines.md` | Vue 3 conventions, component patterns, Tailwind usage |
 | `.ai/workflows/common-tasks.md` | Cross-layer task sequencing |

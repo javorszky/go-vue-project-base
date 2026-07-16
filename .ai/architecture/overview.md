@@ -53,7 +53,7 @@ Both the backend and frontend follow the [twelve-factor app](https://12factor.ne
 The remaining factors (codebase, dependencies, build/release/run, port binding, concurrency, disposability, admin processes) are enforced by the project structure and `build/Dockerfile` and do not require per-feature decisions.
 
 ## Development setup
-- Backend and frontend are developed and run independently; they live in separate directories (e.g. `backend/` and `frontend/`).
+- Backend and frontend are developed and run independently; the backend lives in `cmd/` + `internal/`, the frontend in `frontend/`.
 - In development, Vite proxies `/api` requests to the running Go server to avoid CORS issues:
   ```ts
   // vite.config.ts
