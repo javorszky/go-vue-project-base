@@ -12,13 +12,21 @@ import (
 	"github.com/labstack/echo/v5/middleware"
 
 	"github.com/your-org/your-project/internal/config"
+	"github.com/your-org/your-project/internal/ui"
 )
 
+// The timeout and size limits mirror deploy/Caddyfile (read_header 5s,
+// read_body 30s, write 30s, idle 2m, max_header_size 64KB) so the Go server
+// is equally protected when it is exposed directly in embedded mode, without
+// Caddy in front.
 const (
 	bodyLimitBytes    = 10 * 1024 * 1024 // 10 MiB
 	gracefulTimeout   = 10 * time.Second
 	readHeaderTimeout = 5 * time.Second
 	readTimeout       = 30 * time.Second
+	writeTimeout      = 30 * time.Second
+	idleTimeout       = 2 * time.Minute
+	maxHeaderBytes    = 64 * 1024 // 64 KiB
 )
 
 // Server wraps the Echo instance and the address it will listen on.
@@ -32,6 +40,29 @@ func New(cfg config.Config, gitSHA, buildTime string) *Server {
 	e := echo.New()
 
 	e.Use(middleware.Recover())
+
+	// Security headers, mirroring the deploy/Caddyfile header block so
+	// embedded-mode deployments (no Caddy in front) get the same protection.
+	// Deliberately omitted here:
+	//   - HSTS: this process serves plain HTTP; browsers ignore the header
+	//     over http://, and Caddy sets it at the TLS edge.
+	//   - CSP: a useful policy is app-specific and a template default of
+	//     'self' breaks the first external font or API a consumer adds;
+	//     set one in deploy/Caddyfile (or here) once the app's needs are known.
+	//   - X-XSS-Protection: deprecated; modern browsers ignore it.
+	e.Use(middleware.SecureWithConfig(middleware.SecureConfig{
+		ContentTypeNosniff: "nosniff",
+		XFrameOptions:      "DENY",
+		ReferrerPolicy:     "strict-origin-when-cross-origin",
+	}))
+	// Permissions-Policy is not part of echo's SecureConfig; set it directly.
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c *echo.Context) error {
+			(*c).Response().Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+			return next(c)
+		}
+	})
+
 	e.Use(otelMiddleware(cfg.ServiceName))
 	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogMethod:   true,
@@ -73,7 +104,7 @@ func New(cfg config.Config, gitSHA, buildTime string) *Server {
 	v1.GET("/health", healthHandler)
 	v1.GET("/status", statusHandler(gitSHA, buildTime))
 
-	registerStatic(e)
+	registerStatic(e, ui.FS)
 
 	return &Server{echo: e, addr: fmt.Sprintf(":%d", cfg.Port)}
 }
@@ -86,6 +117,9 @@ func (s *Server) Start(ctx context.Context) error {
 		BeforeServeFunc: func(srv *http.Server) error {
 			srv.ReadHeaderTimeout = readHeaderTimeout
 			srv.ReadTimeout = readTimeout
+			srv.WriteTimeout = writeTimeout
+			srv.IdleTimeout = idleTimeout
+			srv.MaxHeaderBytes = maxHeaderBytes
 			return nil
 		},
 	}

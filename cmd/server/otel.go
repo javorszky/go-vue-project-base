@@ -16,7 +16,7 @@ import (
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdkresource "go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
 
 	"github.com/your-org/your-project/internal/config"
 )
@@ -120,9 +120,11 @@ func setupOTel(ctx context.Context, cfg config.Config) (func(), error) {
 func buildSlogHandler(endpoint string, otelHandler slog.Handler) (slog.Handler, *slog.Logger) {
 	stderrHandler := slog.NewJSONHandler(os.Stderr, nil)
 	if endpoint != "" {
-		// Prod: fan-out to stderr AND the OTel bridge. asyncHandler wraps the
-		// bridge so a slow or unreachable collector cannot block the request path.
-		return newMultiHandler(stderrHandler, newAsyncHandler(otelHandler)), slog.New(stderrHandler)
+		// Prod: fan-out to stderr AND the OTel bridge. The bridge hands records
+		// to the logger provider's BatchProcessor, whose emit path is
+		// non-blocking by design, so a slow or unreachable collector cannot
+		// block the request path — no extra async wrapper is needed.
+		return newMultiHandler(stderrHandler, otelHandler), slog.New(stderrHandler)
 	}
 	// Dev: OTel bridge only — the stdoutlog exporter writes to stdout and
 	// is always available, so no fallback is needed.
@@ -161,59 +163,9 @@ func buildLoggerProvider(exporter sdklog.Exporter, res *sdkresource.Resource) *s
 	)
 }
 
-// asyncLogBufSize is the number of log records the asyncHandler can queue
-// before it starts dropping. Sized to absorb short bursts while the
-// collector recovers without unbounded memory growth.
-const asyncLogBufSize = 512
-
-// asyncHandler wraps a slog.Handler and processes records off the hot path via
-// a buffered channel and a single background goroutine. Handle does a
-// non-blocking channel send and returns immediately; records are dropped (not
-// queued indefinitely) when the buffer is full, so the caller is never held up
-// even when the underlying handler or collector is slow or unreachable.
-type asyncHandler struct {
-	inner slog.Handler
-	ch    chan slog.Record
-}
-
-func newAsyncHandler(h slog.Handler) *asyncHandler {
-	a := &asyncHandler{inner: h, ch: make(chan slog.Record, asyncLogBufSize)}
-	go func() {
-		for r := range a.ch {
-			if err := a.inner.Handle(context.Background(), r); err != nil {
-				slog.Error("async log handler", "error", err)
-			}
-		}
-	}()
-	return a
-}
-
-func (a *asyncHandler) Enabled(ctx context.Context, level slog.Level) bool {
-	return a.inner.Enabled(ctx, level)
-}
-
-func (a *asyncHandler) Handle(ctx context.Context, r slog.Record) error { //nolint:gocritic // slog.Handler interface mandates this signature
-	if !a.inner.Enabled(ctx, r.Level) {
-		return nil
-	}
-	select {
-	case a.ch <- r.Clone():
-	default: // buffer full — drop rather than block the caller
-	}
-	return nil
-}
-
-func (a *asyncHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return newAsyncHandler(a.inner.WithAttrs(attrs))
-}
-
-func (a *asyncHandler) WithGroup(name string) slog.Handler {
-	return newAsyncHandler(a.inner.WithGroup(name))
-}
-
 // multiHandler fans out slog records to multiple handlers sequentially.
-// Handlers that must not block the caller (e.g. the OTel bridge) should be
-// wrapped in asyncHandler before being passed here.
+// Blocking concerns are handled downstream: the OTel bridge feeds the logger
+// provider's BatchProcessor, which buffers and exports off the hot path.
 type multiHandler struct{ handlers []slog.Handler }
 
 func newMultiHandler(handlers ...slog.Handler) multiHandler {

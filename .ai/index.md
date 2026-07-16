@@ -9,7 +9,7 @@ shifts. Do not let it drift from the actual code.
 ## Go packages
 
 ### `cmd/server` — process entry point
-`main.go`, `otel.go`
+`main.go`, `otel.go`, `otel_exporters_grpc.go`, `otel_exporters_http.go`, `otel_exporters_stdout.go`, `otel_test.go`, `otel_exporters_test.go`
 
 | Symbol | Signature | Purpose |
 |--------|-----------|---------|
@@ -49,18 +49,18 @@ Env vars: `PORT` (default `8080`), `DOMAIN` (default `localhost`), `FRONTEND_ORI
 ---
 
 ### `internal/server` — HTTP server
-`server.go`, `middleware.go`, `status.go`, `static.go`, `server_test.go`
+`server.go`, `middleware.go`, `status.go`, `static.go`, `server_test.go`, `static_test.go`, `middleware_test.go`
 
 | Symbol | Signature | Purpose |
 |--------|-----------|---------|
 | `Server` | `struct{ echo *echo.Echo; addr string }` | Wraps Echo and the listen address |
-| `New` | `func New(cfg config.Config, gitSHA, buildTime string) *Server` | Creates Echo instance, registers middleware and routes |
-| `(*Server).Start` | `func (s *Server) Start(ctx context.Context) error` | Runs server until `ctx` is cancelled, then shuts down gracefully (10 s timeout) |
+| `New` | `func New(cfg config.Config, gitSHA, buildTime string) *Server` | Creates Echo instance, registers middleware (recover, security headers, OTel, request logging, body limit, optional CORS) and routes |
+| `(*Server).Start` | `func (s *Server) Start(ctx context.Context) error` | Runs server until `ctx` is cancelled, then shuts down gracefully (10 s timeout); sets read/write/idle timeouts and header-size limit mirroring deploy/Caddyfile |
 | `(*Server).Handler` | `func (s *Server) Handler() http.Handler` | Returns the Echo instance as `http.Handler`; use in tests with `httptest` |
 | `otelMiddleware` | `func otelMiddleware(serviceName string) echo.MiddlewareFunc` | Custom Echo v5 OTel middleware: extracts W3C trace context, creates server span, records HTTP method/path/status |
 | `healthHandler` | `func healthHandler(c *echo.Context) error` | `GET /api/v1/health` → `{"status":"ok"}` |
 | `statusHandler` | `func statusHandler(gitSHA, buildTime string) echo.HandlerFunc` | `GET /api/v1/status` → `{"status":"ok","git_sha":"…","build_time":"…"}` |
-| `registerStatic` | `func registerStatic(e *echo.Echo)` | Serves embedded Vue SPA (Mode 1 only; delete this file to move to Mode 2) |
+| `registerStatic` | `func registerStatic(e *echo.Echo, fsys fs.FS)` | Serves Vue SPA from given fs (`ui.FS` in prod, `fstest.MapFS` in tests; Mode 1 only — delete this file to move to Mode 2) |
 
 Note: `otelecho` (the contrib package) targets Echo v4 and cannot be used here. `otelMiddleware` is the Echo v5 replacement.
 
@@ -89,8 +89,20 @@ Mounts the Vue app onto `#app`. No exports.
 ---
 
 ### `App.vue` — root component
-Calls `checkHealth()` on mount; displays a coloured dot indicating API reachability.  
+Calls `checkHealth()` and `getStatus()` on mount, then renders `StatusCard` with the results. Tested in `App.spec.ts` (mocks `api/client`).  
 **To change the landing page:** edit this file.
+
+---
+
+### `components/StatusCard.vue` — status display
+Presentational card: API reachability dot plus build info inside a reka-ui Collapsible (the template's example of wiring a reka-ui primitive). Props: `health: ProbeStatus`, `buildStatus: ProbeStatus`, `buildInfo: StatusResponse | null`. Tested in `components/StatusCard.spec.ts`.
+
+---
+
+### `types.ts` — shared UI types
+| Export | Signature | Purpose |
+|--------|-----------|---------|
+| `ProbeStatus` | `type ProbeStatus = 'loading' \| 'ok' \| 'error'` | Lifecycle of an async probe as rendered by the UI |
 
 ---
 
@@ -104,7 +116,7 @@ All `fetch` calls live here. No raw `fetch` elsewhere.
 | `StatusResponse` | `interface{ status: string; git_sha: string; build_time: string }` | Response shape for `/api/v1/status` |
 | `getStatus` | `function getStatus(): Promise<StatusResponse>` | `GET /api/v1/status` |
 
-**To add an API call:** add a function here, typed against the OpenAPI contract.
+**To add an API call:** add a function here, typed against the OpenAPI contract. Tested in `api/client.spec.ts` (stubbed global `fetch`).
 
 ---
 

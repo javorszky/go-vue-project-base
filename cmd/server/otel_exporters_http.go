@@ -14,6 +14,10 @@ import (
 	"github.com/your-org/your-project/internal/config"
 )
 
+// buildHTTPExporters uses WithInsecure() on all three signals: the expected
+// deployment has the collector on localhost or inside the same cluster, where
+// plaintext OTLP is the norm. If your collector is across a network boundary,
+// drop WithInsecure (https is the default) and configure WithTLSClientConfig.
 func buildHTTPExporters(ctx context.Context, cfg config.Config) (exporterSet, error) {
 	te, err := otlptracehttp.New(ctx,
 		otlptracehttp.WithEndpoint(cfg.OTelEndpoint),

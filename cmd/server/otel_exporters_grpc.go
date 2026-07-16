@@ -16,6 +16,10 @@ import (
 	"github.com/your-org/your-project/internal/config"
 )
 
+// buildGRPCExporters uses WithInsecure() on all three signals: the expected
+// deployment has the collector on localhost or inside the same cluster, where
+// plaintext OTLP is the norm. If your collector is across a network boundary,
+// replace WithInsecure with WithTLSCredentials.
 func buildGRPCExporters(ctx context.Context, cfg config.Config) (exporterSet, error) {
 	te, err := otlptracegrpc.New(ctx,
 		otlptracegrpc.WithEndpoint(cfg.OTelEndpoint),

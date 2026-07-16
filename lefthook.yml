@@ -1,6 +1,6 @@
 # lefthook v2.1.6
 # Install: brew install lefthook  OR  go install github.com/evilmartians/lefthook@v2.1.6
-# Activate after cloning: lefthook install  (or run npm install in frontend/ — the prepare script does it)
+# Activate after cloning: lefthook install
 #
 # Required tools on PATH:
 #   go, golangci-lint, gofmt  — https://golangci-lint.run/usage/install/
