@@ -89,8 +89,20 @@ Mounts the Vue app onto `#app`. No exports.
 ---
 
 ### `App.vue` — root component
-Calls `checkHealth()` on mount; displays a coloured dot indicating API reachability.  
+Calls `checkHealth()` and `getStatus()` on mount, then renders `StatusCard` with the results. Tested in `App.spec.ts` (mocks `api/client`).  
 **To change the landing page:** edit this file.
+
+---
+
+### `components/StatusCard.vue` — status display
+Presentational card: API reachability dot plus build info inside a reka-ui Collapsible (the template's example of wiring a reka-ui primitive). Props: `health: ProbeStatus`, `buildStatus: ProbeStatus`, `buildInfo: StatusResponse | null`. Tested in `components/StatusCard.spec.ts`.
+
+---
+
+### `types.ts` — shared UI types
+| Export | Signature | Purpose |
+|--------|-----------|---------|
+| `ProbeStatus` | `type ProbeStatus = 'loading' \| 'ok' \| 'error'` | Lifecycle of an async probe as rendered by the UI |
 
 ---
 
@@ -104,7 +116,7 @@ All `fetch` calls live here. No raw `fetch` elsewhere.
 | `StatusResponse` | `interface{ status: string; git_sha: string; build_time: string }` | Response shape for `/api/v1/status` |
 | `getStatus` | `function getStatus(): Promise<StatusResponse>` | `GET /api/v1/status` |
 
-**To add an API call:** add a function here, typed against the OpenAPI contract.
+**To add an API call:** add a function here, typed against the OpenAPI contract. Tested in `api/client.spec.ts` (stubbed global `fetch`).
 
 ---
 

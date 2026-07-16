@@ -14,7 +14,7 @@ A GitHub template for production-ready full-stack applications: Go backend, Vue 
 | Tool | Version | Install |
 |---|---|---|
 | Go | 1.26+ | [go.dev/dl](https://go.dev/dl) |
-| Node | 24+ | [nvm](https://github.com/nvm-sh/nvm) — `nvm install` reads `.nvmrc` |
+| Node | 26+ | [nodejs.org](https://nodejs.org) or any version manager (nvm, mise, asdf, volta) |
 | golangci-lint | latest | `brew install golangci-lint` |
 | lefthook | 2.1+ | `brew install lefthook` |
 | shellcheck | latest | `brew install shellcheck` |
