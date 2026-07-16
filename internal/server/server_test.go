@@ -131,35 +131,14 @@ func TestCORSHeaders(t *testing.T) {
 	}
 }
 
+// The SPA-fallback half of the static-serving behaviour lives in
+// static_test.go (white-box, injected filesystem) so the suite doesn't
+// require a built frontend in internal/ui/dist.
 func TestStaticSPASkipper(t *testing.T) {
-	tests := []struct {
-		name            string
-		path            string
-		wantContentType string
-		wantStatus      int
-	}{
-		{
-			name:            "unknown API path returns 404 JSON, not SPA",
-			path:            "/api/v1/nonexistent",
-			wantStatus:      http.StatusNotFound,
-			wantContentType: "application/json",
-		},
-		{
-			name:            "unknown frontend path returns SPA index",
-			path:            "/some-spa-route",
-			wantStatus:      http.StatusOK,
-			wantContentType: "text/html",
-		},
-	}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/nonexistent", http.NoBody)
+	rec := httptest.NewRecorder()
+	newHandler("").ServeHTTP(rec, req)
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, tc.path, http.NoBody)
-			rec := httptest.NewRecorder()
-			newHandler("").ServeHTTP(rec, req)
-
-			assert.Equal(t, tc.wantStatus, rec.Code)
-			assert.Contains(t, rec.Header().Get("Content-Type"), tc.wantContentType)
-		})
-	}
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Contains(t, rec.Header().Get("Content-Type"), "application/json")
 }

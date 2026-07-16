@@ -12,6 +12,7 @@ import (
 	"github.com/labstack/echo/v5/middleware"
 
 	"github.com/your-org/your-project/internal/config"
+	"github.com/your-org/your-project/internal/ui"
 )
 
 const (
@@ -73,7 +74,7 @@ func New(cfg config.Config, gitSHA, buildTime string) *Server {
 	v1.GET("/health", healthHandler)
 	v1.GET("/status", statusHandler(gitSHA, buildTime))
 
-	registerStatic(e)
+	registerStatic(e, ui.FS)
 
 	return &Server{echo: e, addr: fmt.Sprintf(":%d", cfg.Port)}
 }

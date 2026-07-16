@@ -49,7 +49,7 @@ Env vars: `PORT` (default `8080`), `DOMAIN` (default `localhost`), `FRONTEND_ORI
 ---
 
 ### `internal/server` — HTTP server
-`server.go`, `middleware.go`, `status.go`, `static.go`, `server_test.go`
+`server.go`, `middleware.go`, `status.go`, `static.go`, `server_test.go`, `static_test.go`
 
 | Symbol | Signature | Purpose |
 |--------|-----------|---------|
@@ -60,7 +60,7 @@ Env vars: `PORT` (default `8080`), `DOMAIN` (default `localhost`), `FRONTEND_ORI
 | `otelMiddleware` | `func otelMiddleware(serviceName string) echo.MiddlewareFunc` | Custom Echo v5 OTel middleware: extracts W3C trace context, creates server span, records HTTP method/path/status |
 | `healthHandler` | `func healthHandler(c *echo.Context) error` | `GET /api/v1/health` → `{"status":"ok"}` |
 | `statusHandler` | `func statusHandler(gitSHA, buildTime string) echo.HandlerFunc` | `GET /api/v1/status` → `{"status":"ok","git_sha":"…","build_time":"…"}` |
-| `registerStatic` | `func registerStatic(e *echo.Echo)` | Serves embedded Vue SPA (Mode 1 only; delete this file to move to Mode 2) |
+| `registerStatic` | `func registerStatic(e *echo.Echo, fsys fs.FS)` | Serves Vue SPA from given fs (`ui.FS` in prod, `fstest.MapFS` in tests; Mode 1 only — delete this file to move to Mode 2) |
 
 Note: `otelecho` (the contrib package) targets Echo v4 and cannot be used here. `otelMiddleware` is the Echo v5 replacement.
 
