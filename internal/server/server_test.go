@@ -131,6 +131,22 @@ func TestCORSHeaders(t *testing.T) {
 	}
 }
 
+func TestSecurityHeaders(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health", http.NoBody)
+	rec := httptest.NewRecorder()
+	newHandler("").ServeHTTP(rec, req)
+
+	want := map[string]string{
+		"X-Content-Type-Options": "nosniff",
+		"X-Frame-Options":        "DENY",
+		"Referrer-Policy":        "strict-origin-when-cross-origin",
+		"Permissions-Policy":     "geolocation=(), microphone=(), camera=()",
+	}
+	for header, value := range want {
+		assert.Equal(t, value, rec.Header().Get(header), header)
+	}
+}
+
 // The SPA-fallback half of the static-serving behaviour lives in
 // static_test.go (white-box, injected filesystem) so the suite doesn't
 // require a built frontend in internal/ui/dist.
