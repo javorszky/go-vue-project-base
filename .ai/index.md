@@ -9,7 +9,7 @@ shifts. Do not let it drift from the actual code.
 ## Go packages
 
 ### `cmd/server` — process entry point
-`main.go`, `otel.go`
+`main.go`, `otel.go`, `otel_exporters_grpc.go`, `otel_exporters_http.go`, `otel_exporters_stdout.go`, `otel_test.go`, `otel_exporters_test.go`
 
 | Symbol | Signature | Purpose |
 |--------|-----------|---------|
@@ -49,7 +49,7 @@ Env vars: `PORT` (default `8080`), `DOMAIN` (default `localhost`), `FRONTEND_ORI
 ---
 
 ### `internal/server` — HTTP server
-`server.go`, `middleware.go`, `status.go`, `static.go`, `server_test.go`, `static_test.go`
+`server.go`, `middleware.go`, `status.go`, `static.go`, `server_test.go`, `static_test.go`, `middleware_test.go`
 
 | Symbol | Signature | Purpose |
 |--------|-----------|---------|

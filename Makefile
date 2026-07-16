@@ -18,6 +18,8 @@ run: build
 docker-build:
 	docker build \
 		-f build/Dockerfile \
+		--build-arg GIT_SHA=$(shell git rev-parse HEAD) \
+		--build-arg BUILD_TIME=$(shell date -u +%Y-%m-%dT%H:%M:%SZ) \
 		-t $(IMAGE):$(shell git rev-parse --short HEAD) \
 		-t $(IMAGE):latest \
 		.

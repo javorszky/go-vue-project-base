@@ -28,9 +28,14 @@ COPY api/ ./api/
 # Vite builds to ../internal/ui/dist (relative to /frontend workdir) = /internal/ui/dist.
 COPY --from=frontend-builder /internal/ui/dist ./internal/ui/dist
 
+# Version stamping: `make docker-build` passes the real values; a bare
+# `docker build` falls back to "unknown". Surfaced at /api/v1/status.
+ARG GIT_SHA=unknown
+ARG BUILD_TIME=unknown
+
 RUN CGO_ENABLED=0 GOOS=linux go build \
     -trimpath \
-    -ldflags="-s -w" \
+    -ldflags="-s -w -X main.gitSHA=${GIT_SHA} -X main.buildTime=${BUILD_TIME}" \
     -o /server \
     ./cmd/server
 

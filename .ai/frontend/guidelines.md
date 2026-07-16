@@ -30,15 +30,23 @@
 
 ## Security headers
 
-CSP must be set wherever `index.html` is served — the static host/CDN in production, and Vite's dev server in development. It is not the backend's responsibility (the backend serves JSON, not HTML pages).
+Security headers are applied in two layers, and neither lives in the Vite dev server:
 
-### Policy directives for this SPA
+1. **Go server** (`internal/server/server.go`) — `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, and `Permissions-Policy` via echo's Secure middleware, so embedded-mode deployments are covered without a proxy in front.
+2. **Caddy edge** (`deploy/Caddyfile`) — the same set plus HSTS, which only makes sense at the TLS terminator.
+
+Do **not** add CSP or other security headers to `vite.config.ts` `server.headers`: dev-server CSP breaks HMR websockets and Vue devtools, and protects nothing — production headers never come from Vite.
+
+### Content-Security-Policy
+
+No CSP ships by default: a useful policy is app-specific, and a template default of `default-src 'self'` breaks the first external font, image CDN, or API a consumer adds. When the app's external origins are known, add a policy at the serving layer — `deploy/Caddyfile` in decoupled mode, or the Secure middleware's `ContentSecurityPolicy` field in embedded mode. A sensible starting point for this SPA shape:
+
 ```
 Content-Security-Policy:
   default-src 'self';
   script-src  'self';
-  style-src   'self' 'unsafe-inline';
-  connect-src 'self' https://api.example.com;
+  style-src   'self';
+  connect-src 'self' https://<api-origin>;
   img-src     'self' data:;
   font-src    'self';
   object-src  'none';
@@ -48,26 +56,8 @@ Content-Security-Policy:
 ```
 
 Notes:
-- `unsafe-inline` on `style-src` is required in **development** (Vite injects styles at runtime). In a production build Vite extracts all styles to `.css` files, so you can drop `unsafe-inline` there.
-- `connect-src` must include the backend API origin. In development that is `http://localhost:8080`; in production it is the deployed API origin.
-- Replace `https://api.example.com` with the real production API origin before deploying.
-
-### Vite dev server configuration
-Set headers in `vite.config.ts` so the dev environment matches production as closely as possible:
-```ts
-server: {
-  headers: {
-    'Content-Security-Policy':
-      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
-      "connect-src 'self' http://localhost:8080; img-src 'self' data:; " +
-      "font-src 'self'; object-src 'none'; base-uri 'self'; " +
-      "form-action 'self'; frame-ancestors 'none';",
-  },
-}
-```
-
-### Production (static host / CDN)
-Configure the CSP header at the hosting layer (e.g. Nginx `add_header`, Cloudflare Transform Rules, Netlify `_headers` file) — not in the built HTML file itself. Drop `unsafe-inline` from `style-src` in the production policy.
+- Production Vite builds extract all styles to `.css` files, so `style-src 'self'` works without `unsafe-inline`.
+- `connect-src` must include the API origin in decoupled mode; in embedded mode `'self'` already covers it.
 
 ## Tailwind CSS v4
 - Configuration is CSS-first: use `@theme`, `@layer`, and `@utility` in the root CSS file instead of a JS config.
