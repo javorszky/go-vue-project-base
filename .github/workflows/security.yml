@@ -22,15 +22,15 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Scan
+      - name: Scan (report)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scan-ref: .
           format: sarif
           output: trivy.sarif
-          # Report all severities to code scanning; adjust branch-protection
-          # rules in GitHub settings to decide which severities block merges.
+          # Report all severities to code scanning for visibility; the
+          # blocking decision is made by the gate step below.
           severity: CRITICAL,HIGH,MEDIUM,LOW
           exit-code: '0'
 
@@ -40,6 +40,19 @@ jobs:
         with:
           sarif_file: trivy.sarif
           category: trivy
+
+      - name: Scan (gate)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          # Fail the job only on actionable findings: critical/high with a
+          # fix available. Unfixed CVEs stay visible in code scanning above
+          # without blocking every merge.
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
 
   govulncheck:
     name: govulncheck — reachable Go CVEs
@@ -56,10 +69,29 @@ jobs:
           go-version-file: go.mod
 
       - name: Install govulncheck
-        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+        # Pinned so CI runs are reproducible; Renovate keeps this current.
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.6.0
 
       - name: Run govulncheck
         run: govulncheck ./...
+
+  # No image-scanning job yet: nothing in CI builds or publishes a container
+  # image. When a release workflow lands, add a trivy image scan against the
+  # pushed tag there.
+  dependency-review:
+    name: Dependency review — PR diff CVEs & licences
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
 
   zizmor:
     name: Zizmor — workflow security audit
