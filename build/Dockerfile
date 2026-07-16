@@ -10,7 +10,10 @@ COPY frontend/ ./
 RUN npm run build
 
 # ── Go binary ─────────────────────────────────────────────────────────────────
-FROM golang:1.26-alpine AS go-builder
+# Pinned to the exact Go patch release, not the floating 1.26-alpine tag: the go
+# directive in go.mod is the enforced minimum Go version, so the builder must not
+# silently drift away from it. Renovate keeps tag and digest in step (see renovate.json).
+FROM golang:1.26.4-alpine@sha256:3ad57304ad93bbec8548a0437ad9e06a455660655d9af011d58b993f6f615648 AS go-builder
 WORKDIR /app
 
 # Cache module downloads separately from source.

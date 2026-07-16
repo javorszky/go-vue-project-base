@@ -56,6 +56,32 @@ jobs:
           flags: go
           fail_ci_if_error: false
 
+  go-version-sync:
+    name: Go — go.mod / Dockerfile pin sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+
+      # The go directive is the enforced minimum Go version; the builder image runs
+      # GOTOOLCHAIN=local, so it cannot compensate for a directive it does not satisfy.
+      # Renovate groups both bumps into one PR ("golang"), but the two sources publish
+      # at different times — this check keeps a half-applied group PR from automerging.
+      - name: go directive matches builder image tag
+        run: |
+          go_ver=$(grep -m1 '^go ' go.mod | awk '{print $2}')
+          img_ver=$(grep -m1 '^FROM golang:' build/Dockerfile | sed -E 's/^FROM golang:([0-9.]+)-alpine.*/\1/')
+          if [ -z "$go_ver" ] || [ -z "$img_ver" ]; then
+            printf 'Could not parse versions — go.mod=%s Dockerfile=%s\n' "${go_ver:-<none>}" "${img_ver:-<none>}"
+            exit 1
+          fi
+          if [ "$go_ver" != "$img_ver" ]; then
+            printf 'Go version mismatch:\n  go.mod go directive:        %s\n  build/Dockerfile golang tag: %s\nBoth must move together — see the "golang" group in renovate.json.\n' "$go_ver" "$img_ver"
+            exit 1
+          fi
+          printf 'Go versions in sync: %s\n' "$go_ver"
+
   frontend-lint:
     name: Frontend — lint & format
     runs-on: ubuntu-latest

@@ -4,14 +4,40 @@
     "config:recommended",
     "helpers:pinGitHubActionDigests"
   ],
-  "stabilityDays": 0,
   "automerge": true,
   "automergeType": "pr",
   "platformAutomerge": true,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^go\\.mod$/"],
+      "matchStrings": ["\\ngo (?<currentValue>\\d+\\.\\d+\\.\\d+)\\n"],
+      "depNameTemplate": "golang",
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
+    }
+  ],
   "packageRules": [
     {
-      "matchManagers": ["gomod", "npm", "github-actions"],
-      "stabilityDays": 0
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["golang"],
+      "enabled": false
+    },
+    {
+      "matchManagers": ["custom.regex", "dockerfile"],
+      "matchDepNames": ["golang"],
+      "groupName": "golang"
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "matchDepNames": ["golang"],
+      "pinDigests": true
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "matchDepNames": ["golang"],
+      "matchUpdateTypes": ["digest", "pinDigest"],
+      "groupName": null
     }
   ]
 }
