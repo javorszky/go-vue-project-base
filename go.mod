@@ -1,6 +1,6 @@
 module github.com/your-org/your-project
 
-go 1.26.5
+go 1.27.1
 
 require (
 	github.com/caarlos0/env/v11 v11.4.1
