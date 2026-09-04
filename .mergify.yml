@@ -1,0 +1,3 @@
+queue_rules:
+  - name: the-q
+    batch_size: 3
