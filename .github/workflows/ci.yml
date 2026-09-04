@@ -24,7 +24,9 @@ jobs:
       - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
         with:
           # Pinned so CI runs are reproducible; Renovate keeps this current.
-          version: v2.12.2
+          # Must stay built with a Go toolchain >= the go directive in go.mod,
+          # or golangci-lint refuses to run ("used to build lower than targeted").
+          version: v2.13.2
 
       - name: Check gofmt
         run: |
