@@ -13,7 +13,7 @@ RUN npm run build
 # Pinned to the exact Go patch release, not the floating 1.26-alpine tag: the go
 # directive in go.mod is the enforced minimum Go version, so the builder must not
 # silently drift away from it. Renovate keeps tag and digest in step (see renovate.json).
-FROM golang:1.26.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2 AS go-builder
+FROM golang:1.27.1-alpine@sha256:cf6fca6641884b8433441b2b0652976f975e1d0fdd26d177eaaf8596087f3125 AS go-builder
 WORKDIR /app
 
 # Cache module downloads separately from source.

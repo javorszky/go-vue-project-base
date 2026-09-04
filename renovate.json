@@ -38,6 +38,11 @@
       "matchDepNames": ["golang"],
       "matchUpdateTypes": ["digest", "pinDigest"],
       "groupName": null
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchPackageNames": ["go.opentelemetry.io/otel**", "go.opentelemetry.io/contrib/**"],
+      "groupName": "opentelemetry-go"
     }
   ]
 }
