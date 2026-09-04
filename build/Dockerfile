@@ -1,6 +1,6 @@
 # ── Frontend ──────────────────────────────────────────────────────────────────
 # Separate deps layer so node_modules is cached as long as package*.json is unchanged.
-FROM node:26-alpine@sha256:aadf416b2cdce311a8811ba3f0608a61b77dbf997500e2eafe781b51f6a0b019 AS frontend-deps
+FROM node:26-alpine@sha256:2d984a15c9b54fd0aeb608b8e0d0d83529eb34d2966db27a1fb4f1edc3d298a3 AS frontend-deps
 WORKDIR /frontend
 COPY frontend/package*.json ./
 RUN npm ci
