@@ -51,7 +51,7 @@ jobs:
       - name: Test
         run: go test -race -coverprofile=coverage.out -covermode=atomic ./cmd/... ./internal/...
 
-      - uses: codecov/codecov-action@0b35c9ecc4f0529d0eb674914510c22f85b196b4 # v7.1.0
+      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         if: always()
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -155,7 +155,7 @@ jobs:
           path: frontend/coverage/
           if-no-files-found: ignore
 
-      - uses: codecov/codecov-action@0b35c9ecc4f0529d0eb674914510c22f85b196b4 # v7.1.0
+      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         if: always()
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
