@@ -4,7 +4,7 @@ go 1.27.1
 
 require (
 	github.com/caarlos0/env/v11 v11.4.1
-	github.com/labstack/echo/v5 v5.3.1
+	github.com/labstack/echo/v5 v5.4.0
 	github.com/stretchr/testify v1.12.1
 	go.opentelemetry.io/contrib/bridges/otelslog v0.20.1
 	go.opentelemetry.io/otel v1.46.0
